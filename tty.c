@@ -311,7 +311,7 @@ tty_start_timer_callback(__unused int fd, __unused short events, void *data)
 	struct client	*c = tty->client;
 
 	log_debug("%s: start timer fired", c->name);
-	if ((tty->flags & (TTY_HAVEDA|TTY_HAVEDA2|TTY_HAVEXDA)) == 0)
+	if ((tty->flags & (TTY_HAVEDA|TTY_HAVEDA_KITTY|TTY_HAVEDA2|TTY_HAVEXDA)) == 0)
 		tty_update_features(tty);
 	tty->flags |= TTY_ALL_REQUEST_FLAGS;
 }
@@ -377,8 +377,10 @@ tty_send_requests(struct tty *tty)
 		return;
 
 	if (tty->term->flags & TERM_VT100LIKE) {
-		if (~tty->term->flags & TTY_HAVEDA)
+		if (~tty->term->flags & TTY_HAVEDA){
+			tty_puts(tty, "\033[?u");
 			tty_puts(tty, "\033[c");
+		}
 		if (~tty->flags & TTY_HAVEDA2)
 			tty_puts(tty, "\033[>c");
 		if (~tty->flags & TTY_HAVEXDA)
@@ -467,6 +469,9 @@ tty_stop_tty(struct tty *tty)
 	if (tty_use_margin(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_DSMG));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+	if (tty_term_has(tty->term, TTYC_DSKITK))
+		/* kitty keys: pop 1 entries */
+		tty_raw(tty, tty_term_string(tty->term, TTYC_DSKITK));
 
 	setblocking(c->fd, 1);
 }
