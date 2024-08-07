@@ -1841,6 +1841,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 				tty_add_features(features, "rectfill", ",");
 			if (p[i] == 52)
 				tty_add_features(features, "clipboard", ",");
+			}
 		}
 		break;
 	}
