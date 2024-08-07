@@ -132,6 +132,11 @@ screen_reinit(struct screen *s)
 #endif
 
 	screen_reset_hyperlinks(s);
+
+	memset(s->kitty_kbd.flags, 0, sizeof(s->kitty_kbd.flags));
+	memset(s->saved_kitty_kbd.flags, 0, sizeof(s->saved_kitty_kbd.flags));
+	s->kitty_kbd.idx = 0;
+	s->saved_kitty_kbd.idx = 0;
 }
 
 /* Reset hyperlinks of a screen. */
@@ -648,6 +653,7 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 		s->saved_cy = s->cy;
 	}
 	memcpy(&s->saved_cell, gc, sizeof s->saved_cell);
+	memcpy(&s->saved_kitty_kbd,&s->kitty_kbd , sizeof s->kitty_kbd);
 
 #ifdef ENABLE_SIXEL
 	TAILQ_CONCAT(&s->saved_images, &s->images, entry);
@@ -706,6 +712,7 @@ screen_alternate_off(struct screen *s, struct grid_cell *gc, int cursor)
 
 	grid_destroy(s->saved_grid);
 	s->saved_grid = NULL;
+	memcpy(&s->kitty_kbd,&s->saved_kitty_kbd , sizeof s->saved_kitty_kbd);
 
 #ifdef ENABLE_SIXEL
 	image_free_all(s);
