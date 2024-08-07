@@ -979,6 +979,15 @@ struct image {
 TAILQ_HEAD(images, image);
 #endif
 
+enum kitty_kbd_flags {
+	KITTY_KBD_DISAMBIGUATE = 0x01,
+	KITTY_KBD_REPORT_EVENT = 0x02,
+	KITTY_KBD_REPORT_ALTERNATE = 0x04,
+	KITTY_KBD_REPORT_ALL = 0x08,
+	KITTY_KBD_REPORT_ASSOCIATED = 0x10,
+	KITTY_KBD_SUPPORTED = (KITTY_KBD_DISAMBIGUATE),
+};
+
 /* Cursor style. */
 enum screen_cursor_style {
 	SCREEN_CURSOR_DEFAULT,
@@ -996,6 +1005,10 @@ struct screen {
 	struct screen_titles		*titles;
 
 	struct grid			*grid;	  /* grid data */
+	struct {
+		enum kitty_kbd_flags flags[8];
+		uint8_t idx;
+	} kitty_kbd;
 
 	u_int				 cx;	  /* cursor x */
 	u_int				 cy;	  /* cursor y */
@@ -1016,6 +1029,10 @@ struct screen {
 	struct grid			*saved_grid;
 	struct grid_cell		 saved_cell;
 	int				 saved_flags;
+	struct {
+		enum kitty_kbd_flags flags[8];
+		uint8_t idx;
+	} saved_kitty_kbd;
 
 	bitstr_t			*tabs;
 	struct screen_sel		*sel;
