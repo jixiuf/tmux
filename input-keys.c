@@ -474,6 +474,12 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 
     if (!disambiguate) return (-1);
 
+	/* Ignore internal function key codes. */
+	if ((key >= KEYC_BASE && key < KEYC_BASE_END) ||
+	    (key >= KEYC_USER && key < KEYC_USER_END)) {
+		return (-1);
+	}
+
 	/*
 	 * If this is a normal 7-bit key, just send it,
 	 * If it is a UTF-8 key, split it and send it.
