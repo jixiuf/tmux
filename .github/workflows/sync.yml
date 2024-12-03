@@ -1,0 +1,27 @@
+# https://github.com/imba-tjd/rebase-upstream-action/blob/master/action.yml#L20C3-L20C7
+# .github/workflows/sync.yml
+name: Rebase Upstream
+on:
+  schedule:
+  # https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions
+  - cron: "20 20 * * *"  # run once a day
+  # - cron: "0 0 * * 0"  # run once a week
+  workflow_dispatch:   # run manually
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+      with:
+      # https://github.com/actions/checkout
+        fetch-depth: 0  # greater than the number of commits you made
+    - uses: jixiuf/rebase-upstream-action@master
+      with:  # all args are optional
+        upstream: tmux/tmux
+        branch:   master
+        depth: 0
+
+      # with:  # all args are optional
+      #   upstream: <user>/<repo>
+      #   branch:   master
