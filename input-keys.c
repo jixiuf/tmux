@@ -825,6 +825,21 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	/* Mouse keys need a pane. */
 	if (KEYC_IS_MOUSE(key))
 		return (0);
+
+	/* Drop characters from Unicode supplementary Private Use Areas. */
+	if (KEYC_IS_UNICODE(key)) {
+		wchar_t	wc;
+
+		utf8_to_data(key, &ud);
+		if (utf8_towc(&ud, &wc) == UTF8_DONE &&
+		    ((wc >= 0xf0000 && wc <= 0xffffd) ||
+		     (wc >= 0x100000 && wc <= 0x10fffd))) {
+			log_debug("%s: dropping supplementary PUA U+%X",
+			    __func__, (u_int)wc);
+			return (0);
+		}
+	}
+
     kitty_flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
 
 	log_debug("%s: key=0x%llx (%s) kitty_flags=%u idx=%u", __func__, key,
