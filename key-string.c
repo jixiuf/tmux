@@ -238,13 +238,13 @@ key_string_get_modifiers(const char **string)
     } else if (strncasecmp(*string, "Hyper-",6) ==0) {
       modifiers |= KEYC_HYPER;
       *string +=6;
-    } else if (strncasecmp(*string, "Control-",6) ==0) {
+    } else if (strncasecmp(*string, "Control-",8) ==0) {
       modifiers |= KEYC_CTRL;
       *string +=8;
-    } else if (strncasecmp(*string, "Meta-",6) ==0) {
+    } else if (strncasecmp(*string, "Meta-",5) ==0) {
       modifiers |= KEYC_REAL_META;
       *string +=5;
-    } else if (strncasecmp(*string, "Alt-",6) ==0) {
+    } else if (strncasecmp(*string, "Alt-",4) ==0) {
       modifiers |= KEYC_META;
       *string +=4;
     } else {

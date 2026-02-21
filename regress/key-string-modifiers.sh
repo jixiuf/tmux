@@ -60,8 +60,8 @@ assert_key () {
 	check_result "$1" "$2" "$actual" "$3"
 }
 
-assert_key 'Meta-a' '^[a' xfail
-assert_key 'Alt-a' '^[a' xfail
+assert_key 'Meta-a' '^[a'
+assert_key 'Alt-a' '^[a'
 assert_key 'Control-a' '^A'
 
 $TMUX kill-server 2>/dev/null
