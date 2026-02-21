@@ -403,11 +403,18 @@ popup_make_pane(struct popup_data *pd, enum layout_type type)
 {
 	struct client		*c = pd->c;
 	struct session		*s = c->session;
-	struct window		*w = s->curw->window;
+	struct window		*w;
 	struct layout_cell	*lc;
-	struct window_pane	*wp = w->active, *new_wp;
+	struct window_pane	*wp, *new_wp;
 	u_int			 hlimit;
 	const char		*shell;
+
+	if (s == NULL || s->curw == NULL)
+		return;
+	w = s->curw->window;
+	wp = w->active;
+	if (wp == NULL)
+		return;
 
 	window_unzoom(w, 1);
 
@@ -770,10 +777,12 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	struct options		*o;
 	struct style		 sytmp;
 
-	if (s != NULL)
+	if (s != NULL && s->curw != NULL)
 		o = s->curw->window->options;
-	else
+	else if (c->session != NULL && c->session->curw != NULL)
 		o = c->session->curw->window->options;
+	else
+		o = global_w_options;
 
 	if (lines == BOX_LINES_DEFAULT)
 		lines = options_get_number(o, "popup-border-lines");
