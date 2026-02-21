@@ -630,6 +630,8 @@ format_cb_session_stack(struct format_tree *ft)
 
 	if (s == NULL)
 		return (NULL);
+	if (s->curw == NULL)
+		return (NULL);
 
 	xsnprintf(result, sizeof result, "%u", s->curw->idx);
 	TAILQ_FOREACH(wl, &s->lastw, sentry) {
@@ -770,7 +772,7 @@ format_cb_window_active_clients(struct format_tree *ft)
 		if (client_session == NULL)
 			continue;
 
-		if (w == client_session->curw->window)
+		if (client_session->curw != NULL && w == client_session->curw->window)
 			n++;
 	}
 
@@ -802,7 +804,7 @@ format_cb_window_active_clients_list(struct format_tree *ft)
 		if (client_session == NULL)
 			continue;
 
-		if (w == client_session->curw->window) {
+		if (client_session->curw != NULL && w == client_session->curw->window) {
 			if (EVBUFFER_LENGTH(buffer) > 0)
 				evbuffer_add(buffer, ",", 1);
 			evbuffer_add_printf(buffer, "%s", loop->name);
@@ -2564,8 +2566,11 @@ format_cb_sixel_support(__unused struct format_tree *ft)
 static void *
 format_cb_active_window_index(struct format_tree *ft)
 {
-	if (ft->s != NULL)
+	if (ft->s != NULL) {
+		if (ft->s->curw == NULL)
+			return (NULL);
 		return (format_printf("%u", ft->s->curw->idx));
+	}
 	return (NULL);
 }
 

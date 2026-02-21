@@ -94,8 +94,11 @@ cmd_move_window_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'a') || before) {
 		if (target.wl != NULL)
 			idx = winlink_shuffle_up(dst, target.wl, before);
-		else
+		else {
+			if (dst->curw == NULL)
+				return (CMD_RETURN_ERROR);
 			idx = winlink_shuffle_up(dst, dst->curw, before);
+		}
 		if (idx == -1)
 			return (CMD_RETURN_ERROR);
 	}

@@ -142,6 +142,8 @@ cmd_select_window_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		cmdq_insert_hook(s, item, current, "after-select-window");
 	}
+	if (s->curw == NULL)
+		return (CMD_RETURN_NORMAL);
 	if (c != NULL && c->session != NULL)
 		s->curw->window->latest = c;
 	recalculate_sizes();
