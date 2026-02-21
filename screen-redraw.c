@@ -610,10 +610,18 @@ static void
 screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 {
 	struct session	*s = c->session;
-	struct options	*oo = s->options;
-	struct window	*w = s->curw->window;
-	struct options	*wo = w->options;
+	struct options	*oo;
+	struct window	*w;
+	struct options	*wo;
 	u_int		 lines;
+
+	if (s == NULL || s->curw == NULL) {
+		memset(ctx, 0, sizeof *ctx);
+		return;
+	}
+	oo = s->options;
+	w = s->curw->window;
+	wo = w->options;
 
 	memset(ctx, 0, sizeof *ctx);
 	ctx->c = c;
