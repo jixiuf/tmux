@@ -186,7 +186,7 @@ $TMUX send-keys -t"$W" 'EOL'
 sleep 0.2
 actual=$($TMUX capturep -pt"$W" | head -1 | sed -e 's/EOL.*$//')
 $TMUX kill-window -t"$W" 2>/dev/null
-check_result "PUA-B-drop-kitty" "" "$actual" xfail
+check_result "PUA-B-drop-kitty" "" "$actual"
 
 # Test with kitty-keys on: U+F0001 (PUA-A) should also be dropped
 W=$($TMUX new-window -P -- sh -c \
@@ -198,7 +198,7 @@ $TMUX send-keys -t"$W" 'EOL'
 sleep 0.2
 actual=$($TMUX capturep -pt"$W" | head -1 | sed -e 's/EOL.*$//')
 $TMUX kill-window -t"$W" 2>/dev/null
-check_result "PUA-A-drop-kitty" "" "$actual" xfail
+check_result "PUA-A-drop-kitty" "" "$actual"
 
 # Test that BMP PUA (U+E000, Nerd Fonts range) is NOT dropped
 W=$($TMUX new-window -P -- sh -c \
@@ -250,7 +250,7 @@ $TMUX send-keys -t"$W" 'EOL'
 sleep 0.2
 actual=$($TMUX capturep -pt"$W" | head -1 | sed -e 's/EOL.*$//')
 $TMUX kill-window -t"$W" 2>/dev/null
-check_result "PUA-B-drop-legacy" "" "$actual" xfail
+check_result "PUA-B-drop-legacy" "" "$actual"
 $TMUX set -g kitty-keys always
 
 #
