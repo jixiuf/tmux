@@ -130,7 +130,8 @@ server_client_set_overlay(struct client *c, u_int delay,
 		c->tty.flags |= TTY_FREEZE;
 	if (c->overlay_mode == NULL)
 		c->tty.flags |= TTY_NOCURSOR;
-	window_update_focus(c->session->curw->window);
+	if (c->session != NULL && c->session->curw != NULL)
+		window_update_focus(c->session->curw->window);
 	server_redraw_client(c);
 }
 
@@ -156,7 +157,7 @@ server_client_clear_overlay(struct client *c)
 	c->overlay_data = NULL;
 
 	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
-	if (c->session != NULL)
+	if (c->session != NULL && c->session->curw != NULL)
 		window_update_focus(c->session->curw->window);
 	server_redraw_client(c);
 }
@@ -397,7 +398,8 @@ server_client_attached_lost(struct client *c)
 		found = NULL;
 		TAILQ_FOREACH(loop, &clients, entry) {
 			s = loop->session;
-			if (loop == c || s == NULL || s->curw->window != w)
+			if (loop == c || s == NULL || s->curw == NULL ||
+			    s->curw->window != w)
 				continue;
 			if (found == NULL || timercmp(&loop->activity_time,
 			    &found->activity_time, >))
@@ -423,7 +425,7 @@ server_client_set_session(struct client *c, struct session *s)
 
 	if (old != NULL && old->curw != NULL)
 		window_update_focus(old->curw->window);
-	if (s != NULL) {
+	if (s != NULL && s->curw != NULL) {
 		s->curw->window->latest = c;
 		recalculate_sizes();
 		window_update_focus(s->curw->window);
@@ -693,7 +695,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 {
 	struct mouse_event	*m = &event->m;
 	struct session		*s = c->session, *fs;
-	struct window		*w = s->curw->window;
+	struct window		*w;
 	struct winlink		*fwl;
 	struct window_pane	*wp, *fwp;
 	u_int			 x, y, b, sx, sy, px, py, sl_mpos = 0;
@@ -711,6 +713,10 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	       DOUBLE,
 	       TRIPLE } type = NOTYPE;
 	enum mouse_where where = NOWHERE;
+
+	if (s->curw == NULL)
+		return (KEYC_UNKNOWN);
+	w = s->curw->window;
 
 	log_debug("%s mouse %02x at %u,%u (last %u,%u) (%d)", c->name, m->b,
 	    m->x, m->y, m->lx, m->ly, c->tty.mouse_drag_flag);
@@ -2344,6 +2350,8 @@ server_client_update_latest(struct client *c)
 
 	if (c->session == NULL)
 		return;
+	if (c->session->curw == NULL)
+		return;
 	w = c->session->curw->window;
 
 	if (w->latest == c)
@@ -3918,6 +3926,8 @@ server_client_get_pane(struct client *c)
 	if (s == NULL)
 		return (NULL);
 
+	if (s->curw == NULL)
+		return (NULL);
 	if (~c->flags & CLIENT_ACTIVEPANE)
 		return (s->curw->window->active);
 	cw = server_client_get_client_window(c, s->curw->window->id);
@@ -3936,6 +3946,8 @@ server_client_set_pane(struct client *c, struct window_pane *wp)
 	if (s == NULL)
 		return;
 
+	if (s->curw == NULL)
+		return;
 	cw = server_client_add_client_window(c, s->curw->window->id);
 	cw->pane = wp;
 	log_debug("%s pane now %%%u", c->name, wp->id);
