@@ -224,6 +224,9 @@ control_notify_session_window_changed(struct session *s)
 {
 	struct client	*c;
 
+	if (s->curw == NULL)
+		return;
+
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
