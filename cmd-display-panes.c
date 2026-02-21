@@ -198,8 +198,12 @@ static void
 cmd_display_panes_draw(struct client *c, __unused void *data,
     struct screen_redraw_ctx *ctx)
 {
-	struct window		*w = c->session->curw->window;
+	struct window		*w;
 	struct window_pane	*wp;
+
+	if (c->session == NULL || c->session->curw == NULL)
+		return;
+	w = c->session->curw->window;
 
 	log_debug("%s: %s @%u", __func__, c->name, w->id);
 
@@ -227,10 +231,14 @@ cmd_display_panes_key(struct client *c, void *data, struct key_event *event)
 	char				*expanded, *error;
 	struct cmdq_item		*item = cdata->item, *new_item;
 	struct cmd_list			*cmdlist;
-	struct window			*w = c->session->curw->window;
+	struct window			*w;
 	struct window_pane		*wp;
 	u_int				 index;
 	key_code			 key;
+
+	if (c->session == NULL || c->session->curw == NULL)
+		return (-1);
+	w = c->session->curw->window;
 
 	if (event->key >= '0' && event->key <= '9')
 		index = event->key - '0';

@@ -222,6 +222,8 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 		if (args_has(args, 'c'))
 			tc->pan_window = NULL;
 		else {
+			if (tc->session->curw == NULL)
+				return (CMD_RETURN_NORMAL);
 			w = tc->session->curw->window;
 			if (tc->pan_window != w) {
 				tc->pan_window = w;
