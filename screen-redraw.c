@@ -354,6 +354,8 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 
 	if (pane_status != PANE_STATUS_OFF) {
 		active = wp = server_client_get_pane(c);
+		if (wp == NULL)
+			return (CELL_OUTSIDE);
 		do {
 			if (!window_pane_visible(wp))
 				goto next1;
@@ -375,6 +377,8 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 	}
 
 	active = wp = server_client_get_pane(c);
+	if (wp == NULL)
+		return (CELL_OUTSIDE);
 	do {
 		if (!window_pane_visible(wp))
 			goto next2;
@@ -726,6 +730,8 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 	struct options		*oo = w->options;
 	struct format_tree	*ft;
 
+	if (active == NULL)
+		return (NULL);
 	if (wp->border_gc_set)
 		return (&wp->border_gc);
 	wp->border_gc_set = 1;
@@ -830,6 +836,8 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	int			 isolates;
 	struct visible_ranges	*r;
 
+	if (active == NULL)
+		return;
 	if (c->overlay_check != NULL) {
 		r = c->overlay_check(c, c->overlay_data, x, y, 1);
 		if (server_client_ranges_is_empty(r))

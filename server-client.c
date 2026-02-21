@@ -2977,6 +2977,8 @@ server_client_reset_state(struct client *c)
 	int			 mode = 0, cursor, flags;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, n;
 
+	if (wp == NULL)
+		return;
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 
@@ -3372,6 +3374,8 @@ server_client_set_path(struct client *c)
 	const char	*path;
 
 	if (s->curw == NULL)
+		return;
+	if (s->curw->window->active == NULL)
 		return;
 	if (s->curw->window->active->base.path == NULL)
 		path = "";

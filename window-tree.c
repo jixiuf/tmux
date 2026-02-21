@@ -150,6 +150,8 @@ window_tree_pull_item(struct window_tree_itemdata *item, struct session **sp,
 		return;
 	if (item->type == WINDOW_TREE_SESSION) {
 		*wlp = (*sp)->curw;
+		if (*wlp == NULL)
+			return;
 		*wp = (*wlp)->window->active;
 		return;
 	}
@@ -260,6 +262,8 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	item->winlink = wl->idx;
 	item->pane = -1;
 
+	if (wl->window->active == NULL)
+		return (0);
 	ft = format_create(NULL, NULL, FORMAT_PANE|wl->window->active->id, 0);
 	format_defaults(ft, NULL, s, wl, NULL);
 	text = format_expand(ft, data->format);
@@ -313,12 +317,17 @@ window_tree_build_session(struct session *s, void *modedata,
 	int				 expanded;
 	struct format_tree		*ft;
 
+	if (wl == NULL)
+		return;
+
 	item = window_tree_add_item(data);
 	item->type = WINDOW_TREE_SESSION;
 	item->session = s->id;
 	item->winlink = -1;
 	item->pane = -1;
 
+	if (wl->window->active == NULL)
+		return;
 	ft = format_create(NULL, NULL, FORMAT_PANE|wl->window->active->id, 0);
 	format_defaults(ft, NULL, s, NULL, NULL);
 	text = format_expand(ft, data->format);
@@ -532,6 +541,8 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 			width = each - 1;
 
 		screen_write_cursormove(ctx, cx + offset, cy, 0);
+		if (w->active == NULL)
+			return;
 		screen_write_preview(ctx, &w->active->base, width, sy);
 
 		xasprintf(&label, " %u:%s ", wl->idx, w->name);

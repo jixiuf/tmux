@@ -964,6 +964,13 @@ tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 	struct window_pane	*wp = server_client_get_pane(c);
 	u_int			 cx, cy, lines;
 
+	if (wp == NULL) {
+		*ox = 0;
+		*oy = 0;
+		*sx = tty->sx;
+		*sy = tty->sy;
+		return (0);
+	}
 	if (c->session == NULL || c->session->curw == NULL) {
 		*ox = 0;
 		*oy = 0;
