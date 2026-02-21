@@ -170,7 +170,91 @@ $TMUX kill-window -t"$W" || exit 1
 check_result "query" "^[[?0u" "$actual"
 
 #
-# C. Legacy fallback (kitty-keys off)
+# C. PUA character filtering (supplementary PUA should be dropped)
+#
+# Supplementary PUA characters from macOS (e.g., Cmd+Shift+{ in iTerm2)
+# should be silently dropped and never reach the pane application.
+#
+
+# Test with kitty-keys on: PUA chars via send-keys -l should produce empty output
+W=$($TMUX new-window -P -- sh -c \
+	'printf "\033[>1u"; stty raw -echo && cat -tv')
+sleep 0.3
+# Send U+100001 (PUA-B) as literal UTF-8: F4 80 80 81
+printf '\364\200\200\201' | $TMUX send-keys -t"$W" -l "$(cat)"
+$TMUX send-keys -t"$W" 'EOL'
+sleep 0.2
+actual=$($TMUX capturep -pt"$W" | head -1 | sed -e 's/EOL.*$//')
+$TMUX kill-window -t"$W" 2>/dev/null
+check_result "PUA-B-drop-kitty" "" "$actual" xfail
+
+# Test with kitty-keys on: U+F0001 (PUA-A) should also be dropped
+W=$($TMUX new-window -P -- sh -c \
+	'printf "\033[>1u"; stty raw -echo && cat -tv')
+sleep 0.3
+# Send U+F0001 (PUA-A) as literal UTF-8: F3 B0 80 81
+printf '\363\260\200\201' | $TMUX send-keys -t"$W" -l "$(cat)"
+$TMUX send-keys -t"$W" 'EOL'
+sleep 0.2
+actual=$($TMUX capturep -pt"$W" | head -1 | sed -e 's/EOL.*$//')
+$TMUX kill-window -t"$W" 2>/dev/null
+check_result "PUA-A-drop-kitty" "" "$actual" xfail
+
+# Test that BMP PUA (U+E000, Nerd Fonts range) is NOT dropped
+W=$($TMUX new-window -P -- sh -c \
+	'printf "\033[>1u"; stty raw -echo && cat -tv')
+sleep 0.3
+# Send U+E000 (BMP PUA) as literal UTF-8: EE 80 80
+printf '\356\200\200' | $TMUX send-keys -t"$W" -l "$(cat)"
+$TMUX send-keys -t"$W" 'EOL'
+sleep 0.2
+actual=$($TMUX capturep -pt"$W" | head -1 | sed -e 's/EOL.*$//')
+$TMUX kill-window -t"$W" 2>/dev/null
+# BMP PUA should pass through (non-empty)
+if [ -z "$actual" ]; then
+	printf '%s[FAIL]%s BMP-PUA-passthrough -> should not be empty\n' \
+		"$RED" "$RESET"
+	exit_status=1
+else
+	[ -n "$VERBOSE" ] && \
+		printf '%s[PASS]%s BMP-PUA-passthrough -> %s\n' \
+		"$GREEN" "$RESET" "$actual"
+fi
+
+# Test that normal emoji (U+1F600) is NOT dropped
+W=$($TMUX new-window -P -- sh -c \
+	'printf "\033[>1u"; stty raw -echo && cat -tv')
+sleep 0.3
+# Send U+1F600 as literal UTF-8: F0 9F 98 80
+printf '\360\237\230\200' | $TMUX send-keys -t"$W" -l "$(cat)"
+$TMUX send-keys -t"$W" 'EOL'
+sleep 0.2
+actual=$($TMUX capturep -pt"$W" | head -1 | sed -e 's/EOL.*$//')
+$TMUX kill-window -t"$W" 2>/dev/null
+if [ -z "$actual" ]; then
+	printf '%s[FAIL]%s emoji-passthrough -> should not be empty\n' \
+		"$RED" "$RESET"
+	exit_status=1
+else
+	[ -n "$VERBOSE" ] && \
+		printf '%s[PASS]%s emoji-passthrough -> %s\n' \
+		"$GREEN" "$RESET" "$actual"
+fi
+
+# Test with kitty-keys off: PUA chars should still be dropped
+$TMUX set -g kitty-keys off
+W=$($TMUX new-window -P -- sh -c 'stty raw -echo && cat -tv')
+sleep 0.3
+printf '\364\200\200\201' | $TMUX send-keys -t"$W" -l "$(cat)"
+$TMUX send-keys -t"$W" 'EOL'
+sleep 0.2
+actual=$($TMUX capturep -pt"$W" | head -1 | sed -e 's/EOL.*$//')
+$TMUX kill-window -t"$W" 2>/dev/null
+check_result "PUA-B-drop-legacy" "" "$actual" xfail
+$TMUX set -g kitty-keys always
+
+#
+# D. Legacy fallback (kitty-keys off)
 #
 
 $TMUX set -g kitty-keys off
