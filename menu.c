@@ -550,7 +550,12 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 	struct menu_data	*md;
 	int			 choice;
 	const char		*name;
-	struct options		*o = c->session->curw->window->options;
+	struct options		*o;
+
+	if (c->session != NULL && c->session->curw != NULL)
+		o = c->session->curw->window->options;
+	else
+		o = global_w_options;
 
 	if (c->tty.sx < menu->width + 4 || c->tty.sy < menu->count + 2)
 		return (NULL);
