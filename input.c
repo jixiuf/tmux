@@ -2117,6 +2117,7 @@ input_csi_dispatch_kitk_push(struct input_ctx *ictx)
 		/* Find a client attached to this window */
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (c->session != NULL &&
+			    c->session->curw != NULL &&
 			    c->session->curw->window == w &&
 			    c->tty.term != NULL) {
 				char seq[16];
@@ -2167,6 +2168,7 @@ input_csi_dispatch_kitk_pop(struct input_ctx *ictx)
 
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (c->session != NULL &&
+			    c->session->curw != NULL &&
 			    c->session->curw->window == w &&
 			    c->tty.term != NULL) {
 				tty_puts(&c->tty, "\033[<u");
@@ -2227,6 +2229,7 @@ input_csi_dispatch_kitk_set(struct input_ctx *ictx)
 
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (c->session != NULL &&
+			    c->session->curw != NULL &&
 			    c->session->curw->window == w &&
 			    c->tty.term != NULL) {
 				char seq[16];
