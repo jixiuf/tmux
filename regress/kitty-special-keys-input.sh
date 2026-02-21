@@ -119,6 +119,10 @@ else:
     os.write(master, b'\033[1;1R')
     time.sleep(0.2)
 
+    # U+00E9 (é) via kitty CSI-u: CSI 233 u
+    os.write(master, b'\033[233u')
+    time.sleep(0.2)
+
     # End marker
     os.write(master, b'Z')
     time.sleep(0.5)
@@ -180,6 +184,8 @@ check_result "Delete (^[[3~)"  "^[[3~"
 check_result "F5 (^[[15~)"    "^[[15~"
 check_result "Up (^[[A)"      "^[[A"
 check_result "F3 (^[[R)"      "^[[R"
+# U+00E9 (é) via kitty CSI-u: cat -v shows M-CM-)
+check_result "U+00E9 (M-CM-)" "M-CM-)" xfail
 
 $TMUX kill-server 2>/dev/null
 
