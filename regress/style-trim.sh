@@ -26,6 +26,11 @@ $TMUX2 -f/dev/null new -d "$TMUX -f/dev/null new -- $shell"
 sleep 2
 $TMUX set -g status-style fg=default,bg=default
 
+RED=$(printf '\033[31m')
+GREEN=$(printf '\033[32m')
+RESET=$(printf '\033[0m')
+exit_status=0
+
 check() {
 	v=$($TMUX display -p "$1")
 	$TMUX set -g status-format[0] "$1"
@@ -33,9 +38,10 @@ check() {
 	r=$($TMUX2 capturep -Cep|tail -1|sed 's|\\033\[||g')
 
 	if [ "$v" != "$2" -o "$r" != "$3" ]; then
-		printf "$1 = [$v = $2] [$r = $3]"
-		printf " \033[31mbad\033[0m\n"
-		exit 1
+		printf '%sFAIL%s %s = [%s = %s] [%s = %s]\n' "$RED" "$RESET" "$1" "$v" "$2" "$r" "$3"
+		exit_status=1
+	elif [ -n "$VERBOSE" ]; then
+		printf '%sPASS%s %s\n' "$GREEN" "$RESET" "$1"
 	fi
 }
 
@@ -101,4 +107,4 @@ check '#{=-3:V}' '#[bg=yellow]456' '43m45649m'
 
 $TMUX kill-server 2>/dev/null
 $TMUX2 kill-server 2>/dev/null
-exit 0
+exit $exit_status

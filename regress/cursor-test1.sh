@@ -23,7 +23,13 @@ $TMUX resizew -x50 || exit 1
 $TMUX display -pF '#{cursor_x} #{cursor_y} #{cursor_character}' >>$TMP
 $TMUX capturep -p|awk '{print NR-1,$0}' >>$TMP
 
-cmp -s $TMP cursor-test1.result || exit 1
-
 $TMUX kill-server 2>/dev/null
-exit 0
+
+if cmp -s $TMP cursor-test1.result; then
+	[ -n "$VERBOSE" ] && echo "[PASS] cursor-test1"
+	exit 0
+else
+	echo "[FAIL] cursor-test1 (capture-pane output differs)"
+	diff $TMP cursor-test1.result
+	exit 1
+fi

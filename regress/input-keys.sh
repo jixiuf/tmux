@@ -12,6 +12,9 @@ sleep 1
 $TMUX set -g escape-time 0
 
 exit_status=0
+RED=$(printf '\033[31m')
+GREEN=$(printf '\033[32m')
+RESET=$(printf '\033[0m')
 
 assert_key () {
 	key=$1
@@ -28,10 +31,10 @@ assert_key () {
 
 	if [ "$actual_code" = "$expected_code" ]; then
 		if [ -n "$VERBOSE" ]; then
-			echo "[PASS] $key -> $actual_code"
+			printf '%sPASS%s %s -> %s\n' "$GREEN" "$RESET" "$key" "$actual_code"
 		fi
 	else
-		echo "[FAIL] $key -> $expected_code (Got: $actual_code)"
+		printf '%sFAIL%s %s -> %s (Got: %s)\n' "$RED" "$RESET" "$key" "$expected_code" "$actual_code"
 		exit_status=1
 	fi
 
