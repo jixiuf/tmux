@@ -17,6 +17,9 @@ $TMUX -f/dev/null new -d "$TMUX2 attach" || exit 1
 sleep 1
 
 exit_status=0
+RED=$(printf '\033[31m')
+GREEN=$(printf '\033[32m')
+RESET=$(printf '\033[0m')
 
 format_string () {
 	case $1 in
@@ -46,10 +49,10 @@ assert_key () {
 
 	if [ "$actual_name" = "$expected_name" ]; then
 		if [ -n "$VERBOSE" ]; then
-			echo "[PASS] $keys -> $actual_name"
+			printf '%sPASS%s %s -> %s\n' "$GREEN" "$RESET" "$keys" "$actual_name"
 		fi
 	else
-		echo "[FAIL] $keys -> $expected_name (Got: '$actual_name')"
+		printf '%sFAIL%s %s -> %s (Got: %s)\n' "$RED" "$RESET" "$keys" "$expected_name" "$actual_name"
 		exit_status=1
 	fi
 
