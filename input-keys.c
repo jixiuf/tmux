@@ -526,6 +526,7 @@ emit_escapes:
 	case KEYC_HOME:			number=1;      final='H';break;
 	case KEYC_F1:			number=1;      final='P';break;
 	case KEYC_F2:			number=1;      final='Q';break;
+	case KEYC_F3:			number=1;      final='R';break;
 	case KEYC_F4:			number=1;      final='S';break;
     case KEYC_IC:           number=2;      final='~'; break;
     case KEYC_DC:           number=3;      final='~'; break;
@@ -535,8 +536,6 @@ emit_escapes:
 		/* case KEYC_END:          number=8;      final='~'; break; */
 		/* case KEYC_F1:           number=11;     final='~'; break; */
 		/* case KEYC_F2:           number=12;     final='~'; break; */
-    case KEYC_F3:           number=13;     final='~'; break;
-		/* case KEYC_F4:           number=14;     final='~'; break; */
     case KEYC_F5:           number=15;     final='~'; break;
     case KEYC_F6:           number=17;     final='~'; break;
     case KEYC_F7:           number=18;     final='~'; break;
