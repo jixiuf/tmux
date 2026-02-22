@@ -9,10 +9,7 @@ TMP=$(mktemp)
 trap "rm -f $TMP" 0 1 15
 $TMUX kill-server 2>/dev/null
 
-$TMUX -f/dev/null \
-	  set -g remain-on-exit on \; \
-	  set -g remain-on-exit-format '' \; \
-      new -d -- cat UTF-8-test.txt
+$TMUX -f/dev/null new -d -- sh -c 'cat UTF-8-test.txt; sleep 999'
 sleep 1
 $TMUX capturep -pCeJS- >$TMP
 $TMUX kill-server

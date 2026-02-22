@@ -21,13 +21,35 @@ assert_key () {
 	expected_code=$2
 
 	W=$($TMUX new-window -P -- sh -c 'stty raw -echo && cat -tv')
-	$TMUX send-keys -t$W "$key" 'EOL' || exit 1
-	sleep 0.2
 
-	actual_code=$($TMUX capturep -pt$W | \
+	# Wait for cat to be ready before sending keys.
+	for _i in $(seq 1 50); do
+		cmd=$($TMUX display -t$W -p '#{pane_current_command}' 2>/dev/null)
+		[ "$cmd" = "cat" ] && break
+		sleep 0.1
+	done
+	if [ "$cmd" != "cat" ]; then
+		echo "[FAIL] $key: pane not ready after 5s (pane_current_command=$cmd)"
+		exit_status=1
+		$TMUX kill-window -t$W 2>/dev/null
+		shift; shift
+		if [ "$1" = "--" ]; then shift; assert_key "$@"; fi
+		return
+	fi
+
+	$TMUX send-keys -t$W "$key" 'EOL' 2>/dev/null
+
+	# Poll for output instead of fixed sleep.
+	for _i in $(seq 1 50); do
+		output=$($TMUX capturep -pt$W 2>/dev/null)
+		case "$output" in *EOL*) break ;; esac
+		sleep 0.1
+	done
+
+	actual_code=$(printf '%s\n' "$output" | \
 			      head -1 | \
 			      sed -e 's/EOL.*$//')
-	$TMUX kill-window -t$W || exit 1
+	$TMUX kill-window -t$W 2>/dev/null
 
 	if [ "$actual_code" = "$expected_code" ]; then
 		if [ -n "$VERBOSE" ]; then
