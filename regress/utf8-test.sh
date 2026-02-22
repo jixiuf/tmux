@@ -17,5 +17,10 @@ sleep 1
 $TMUX capturep -pCeJS- >$TMP
 $TMUX kill-server
 
-cmp -s $TMP utf8-test.result || exit 1
-exit 0
+if cmp -s $TMP utf8-test.result; then
+	[ -n "$VERBOSE" ] && echo "[PASS] UTF-8 rendering"
+	exit 0
+else
+	echo "[FAIL] UTF-8 rendering (capture-pane output differs)"
+	exit 1
+fi
