@@ -71,9 +71,9 @@ add_test () {
 }
 
 # Modified F3 keys via kitty encoding (CSI 1;modR)
-add_test 'S-F3' '^[[1;2R' xfail
-add_test 'C-F3' '^[[1;5R' xfail
-add_test 'M-F3' '^[[1;3R' xfail
+add_test 'S-F3' '^[[1;2R'
+add_test 'C-F3' '^[[1;5R'
+add_test 'M-F3' '^[[1;3R'
 
 # Wait for windows to initialize and push kitty flags
 sleep 0.3
