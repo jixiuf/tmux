@@ -8,15 +8,14 @@ TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 
 $TMUX new -d
-$TMUX set -g remain-on-exit on
 
 exit_status=0
 
 do_test() {
-	$TMUX splitw "printf '$1'"
-	sleep 0.25
-	c="$($TMUX display -p '#{pane_bg}')"
-	$TMUX kill-pane
+	W=$($TMUX new-window -P "printf '$1'; sleep 999")
+	sleep 0.5
+	c="$($TMUX display -t"$W" -p '#{pane_bg}')"
+	$TMUX kill-window -t"$W"
 	if [ "$c" != "$2" ]; then
 		echo "[FAIL] $1 -> expected $2 (Got: $c)"
 		exit_status=1
