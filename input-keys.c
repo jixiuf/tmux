@@ -478,6 +478,9 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 	onlykey = (key & KEYC_MASK_KEY);
 	modifier = get_modifier(key);
 
+	log_debug("%s: key=0x%llx onlykey=0x%llx modifier=%u flags=%u disambiguate=%d",
+		__func__, key, onlykey, modifier, flags, disambiguate);
+
     if (!disambiguate) return (-1);
 
 	/* Ignore internal function key codes. */
@@ -826,8 +829,14 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	if (KEYC_IS_MOUSE(key))
 		return (0);
     kitty_flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
+
+	log_debug("%s: key=0x%llx (%s) kitty_flags=%u idx=%u", __func__, key,
+	    key_string_lookup_key(key, 1), kitty_flags, s->kitty_kbd.idx);
+
 	if (kitty_flags){
-		if(input_key_kitty(s,bev,key) == 0)
+		int result = input_key_kitty(s,bev,key);
+		log_debug("%s: input_key_kitty returned %d", __func__, result);
+		if(result == 0)
 			return (0);
 	}
 	/* legacy encoding key events */
