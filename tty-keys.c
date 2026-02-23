@@ -1323,9 +1323,13 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		}
 		break;
 	case '~':
-		if (sscanf(tmp, "%u;%u~", &number, &modifiers) != 2)
-			if (sscanf(tmp, "%u~",  &number) != 1)
-				return (-1);
+		if (sscanf(tmp, "%u;%u~", &number, &modifiers) == 2) {
+			/* Check for event type: number;modifier:evtype~ */
+			cp = strchr(tmp, ':');
+			if (cp != NULL)
+				evtype = strtoul(cp + 1, NULL, 10);
+		} else if (sscanf(tmp, "%u~", &number) != 1)
+			return (-1);
 		switch (number){
 		case 2:				number=KEYC_IC; break;
 		case 3:				number=KEYC_DC; break;
@@ -1367,6 +1371,10 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		if(end>2){ 			/* has modifiers: CSI 1; modifiers [ABCDEFHPQS]  */
 			if (sscanf(tmp ,"1;%u",  &modifiers) != 1)
 				return (-1);
+			/* Check for event type: 1;modifier:evtype[A-S] */
+			cp = strchr(tmp, ':');
+			if (cp != NULL)
+				evtype = strtoul(cp + 1, NULL, 10);
 		}
 		break;
 	default:
@@ -1375,6 +1383,15 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 
 	}
 	*size = end + 1;
+
+	/* Discard release events, treat repeat as press. */
+	switch (evtype) {
+	case 2:
+		evtype = 1;			/* repeat as press */
+		break;
+	case 3:					/* release */
+		return (-2);			/* discard */
+	}
 
 	/* Store the key. */
 	bspace = tty->tio.c_cc[VERASE];
@@ -1470,7 +1487,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 		nkey = number;
 
 	/* Convert UTF-32 codepoint into internal representation. */
-	if (nkey != KEYC_BSPACE && nkey & ~0x7f) {
+	if (KEYC_IS_UNICODE(nkey)) {
 		if (utf8_fromwc(nkey, &ud) == UTF8_DONE &&
 		    utf8_from_data(&ud, &uc) == UTF8_DONE)
 			nkey = uc;

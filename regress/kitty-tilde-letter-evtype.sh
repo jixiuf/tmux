@@ -204,8 +204,8 @@ check_present "Alt+Right repeat (^[[1;3C)"   "^[[1;3C"
 
 # Release events should be discarded but the ~ and letter handlers
 # don't parse the colon-separated event type field.
-check_absent "Ctrl+Delete release (^[[3;5~)" "^[[3;5~" xfail
-check_absent "Ctrl+Down release (^[[1;5B)"   "^[[1;5B" xfail
+check_absent "Ctrl+Delete release (^[[3;5~)" "^[[3;5~"
+check_absent "Ctrl+Down release (^[[1;5B)"   "^[[1;5B"
 
 # End marker should be present
 check_present "End marker Z" "Z"
