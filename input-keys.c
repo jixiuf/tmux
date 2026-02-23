@@ -481,6 +481,10 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 	log_debug("%s: key=0x%llx onlykey=0x%llx modifier=%u flags=%u disambiguate=%d",
 		__func__, key, onlykey, modifier, flags, disambiguate);
 
+	/* Keys handled by the switch below have valid kitty encodings.
+	 * Internal key codes (focus, paste, mouse, etc.) that fall
+	 * through to the default case will be filtered there. */
+
     if (!disambiguate) return (-1);
 
 	/*
@@ -504,12 +508,13 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 	if(all_as_escapes)
         goto emit_escapes;
 
-	switch(key & ~(KEYC_META|KEYC_IMPLIED_META|
-				   KEYC_CAPS_LOCK|KEYC_MASK_FLAGS)){
-	case '\t':
-	case '\r':
-	case KEYC_BSPACE:
-		return -1;
+	if (modifier == 1) {
+		switch(onlykey){
+		case '\t':
+		case '\r':
+		case KEYC_BSPACE:
+			return -1;
+		}
 	}
 emit_escapes:
 	/* CSI 1; modifiers [ABCDEFHPQS] */
@@ -634,6 +639,12 @@ emit_escapes:
     case KEYC_ISO_LEVEL3_SHIFT:	number = 57453; final='u';break;
     case KEYC_ISO_LEVEL5_SHIFT:	number = 57454; final='u';break;
 	default:
+		if ((onlykey >= KEYC_BASE && onlykey < KEYC_BASE_END) ||
+		    (onlykey >= KEYC_USER && onlykey < KEYC_USER_END)) {
+			log_debug("%s: ignoring internal key 0x%llx",
+			    __func__, key);
+			return (-1);
+		}
 		number=onlykey;
 		final='u';
 	}
