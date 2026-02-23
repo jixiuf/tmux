@@ -75,7 +75,7 @@ struct tty_key {
 	struct tty_key	*next;
 };
 
-/* kitty : CSI 1; modifier [~ABCDEFHPQS] */
+/* kitty : CSI 1; modifier [~ABCDEFHPQRS] */
 static const key_code kitty_ascii_keys[] ={
     KEYC_UP,                    /* A */
     KEYC_DOWN,                   /* B */
@@ -88,7 +88,7 @@ static const key_code kitty_ascii_keys[] ={
     0,0,0,0,0,0,0,
     KEYC_F1,                 /* P */
     KEYC_F2,                    /* Q */
-    0,
+    KEYC_F3,                    /* R */
     KEYC_F4/* S  */
 };
 /* Default raw keys. */
@@ -1132,12 +1132,12 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 
 	/*
 	 * Look for a terminator. Stop at either 'u' '~' or
-     * one of ABCDEFHPQS
+     * one of ABCDEFHPQRS
 	 */
 	for (end = 2; end < len && end != sizeof tmp; end++) {
         final = buf[end];
 		if (buf[end] == 'u' ||buf[end] == '~'||
-            /* ABCDEFHPQS */
+            /* ABCDEFHPQRS */
             (final>='A' && final <= 'S' && kitty_ascii_keys[final - 'A']))
 			break;
 	}
@@ -1145,7 +1145,7 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		return (1);
 	if (end == sizeof tmp || (buf[end] != '~' &&
 							  buf[end] != 'u' &&
-                              /* ABCDEFHPQS */
+                              /* ABCDEFHPQRS */
                               !(final>='A' && final <= 'S' &&
                                 kitty_ascii_keys[final - 'A'])))
 		return (-1);
@@ -1346,7 +1346,7 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 			return (-1);
 		}
 		break;
-	case 'A':					/* CSI 1; modifiers [ABCDEFHPQS] */
+	case 'A':					/* CSI 1; modifiers [ABCDEFHPQRS] */
 	case 'B':
 	case 'C':
 	case 'D':
@@ -1355,6 +1355,7 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 	case 'H':
 	case 'P':
 	case 'Q':
+	case 'R':
 	case 'S':
 			number=kitty_ascii_keys[final - 'A'];
 		/* if no modifiers are present the parameters are omitted entirely
