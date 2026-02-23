@@ -483,25 +483,23 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 
     if (!disambiguate) return (-1);
 
-	/* Ignore internal function key codes. */
-	if ((onlykey >= KEYC_BASE && onlykey < KEYC_BASE_END) ||
-	    (onlykey >= KEYC_USER && onlykey < KEYC_USER_END)) {
-		return (-1);
-	}
-
 	/*
-	 * If this is a normal 7-bit key, just send it,
-	 * If it is a UTF-8 key, split it and send it.
+	 * If this is a normal 7-bit key with no modifiers, just send it.
+	 * If it is a UTF-8 key with no modifiers, send it.
+	 * Keys with modifiers need to go through kitty encoding below.
 	 */
-	if (key <= 0x7f) {
-		ud.data[0] = key;
-		input_key_write(__func__, bev, &ud.data[0], 1);
-		return (0);
-	}
-	if (KEYC_IS_UNICODE(key)) {
-		utf8_to_data(key, &ud);
-		input_key_write(__func__, bev, ud.data, ud.size);
-		return (0);
+	if (modifier == 1) {
+		/* No modifiers present */
+		if (onlykey <= 0x7f) {
+			ud.data[0] = onlykey;
+			input_key_write(__func__, bev, &ud.data[0], 1);
+			return (0);
+		}
+		if (KEYC_IS_UNICODE(onlykey)) {
+			utf8_to_data(onlykey, &ud);
+			input_key_write(__func__, bev, ud.data, ud.size);
+			return (0);
+		}
 	}
 	if(all_as_escapes)
         goto emit_escapes;

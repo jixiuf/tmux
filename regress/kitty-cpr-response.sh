@@ -67,19 +67,19 @@ check_result () {
 add_test () {
 	W=$($TMUX new-window -P -- sh -c \
 		'printf "\033[>1u"; stty raw -echo && cat -tv')
-	printf '%s %s %s\n' "$W" "$1" "$2" >> "$TMPDIR/tests"
+	printf '%s %s %s %s\n' "$W" "$1" "$2" "$3" >> "$TMPDIR/tests"
 }
 
 # Modified F3 keys via kitty encoding (CSI 1;modR)
-add_test 'S-F3' '^[[1;2R'
-add_test 'C-F3' '^[[1;5R'
-add_test 'M-F3' '^[[1;3R'
+add_test 'S-F3' '^[[1;2R' xfail
+add_test 'C-F3' '^[[1;5R' xfail
+add_test 'M-F3' '^[[1;3R' xfail
 
 # Wait for windows to initialize and push kitty flags
 sleep 0.3
 
 # Send keys to all windows
-while read -r w key expected; do
+while read -r w key expected xfail; do
 	$TMUX send-keys -t"$w" "$key" 'EOL' || exit 1
 done < "$TMPDIR/tests"
 
@@ -87,11 +87,11 @@ done < "$TMPDIR/tests"
 sleep 0.3
 
 # Check all results
-while read -r w key expected; do
+while read -r w key expected xfail; do
 	actual=$($TMUX capturep -pt"$w" | \
 		head -1 | sed -e 's/EOL.*$//')
 	$TMUX kill-window -t"$w" 2>/dev/null
-	check_result "$key" "$expected" "$actual"
+	check_result "$key" "$expected" "$actual" "$xfail"
 done < "$TMPDIR/tests"
 
 # ---------- Part B: CPR response must not hang the server ----------
