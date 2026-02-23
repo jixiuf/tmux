@@ -1114,6 +1114,8 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 	char	final, *cp, *next, *subnext, *subcp, tmp[64];
 	cc_t		 bspace;
 	key_code	 nkey;
+	struct utf8_data ud;
+	utf8_char	 uc;
 
 	*size = txt[0] = number = shiftnum = basenum = evtype = 0;
 	/* modifiers: 1:no modifiers */
@@ -1378,6 +1380,15 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		nkey = KEYC_BSPACE;
 	else
 		nkey = number;
+
+	/* Convert UTF-32 codepoint into internal representation. */
+	if (KEYC_IS_UNICODE(nkey)) {
+		if (utf8_fromwc(nkey, &ud) == UTF8_DONE &&
+		    utf8_from_data(&ud, &uc) == UTF8_DONE)
+			nkey = uc;
+		else
+			return (-1);
+	}
 
 	/* Update the modifiers. */
 	nkey=set_modifier(nkey,modifiers);
