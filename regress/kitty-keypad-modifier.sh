@@ -68,19 +68,19 @@ add_kitty_test () {
 }
 
 # KP0 unmodified: keypad codepoint, no modifiers (;modifier omitted)
-add_kitty_test 'KP0' '^[[57399u' xfail
+add_kitty_test 'KP0' '^[[57399u'
 
 # KP5 unmodified: keypad codepoint, no modifiers
-add_kitty_test 'KP5' '^[[57404u' xfail
+add_kitty_test 'KP5' '^[[57404u'
 
 # KPEnter unmodified: keypad codepoint, no modifiers
-add_kitty_test 'KPEnter' '^[[57414u' xfail
+add_kitty_test 'KPEnter' '^[[57414u'
 
 # KP+ with Shift: shift only -> modifier = 0x01 + 1 = 2
-add_kitty_test 'S-KP+' '^[[57413;2u' xfail
+add_kitty_test 'S-KP+' '^[[57413;2u'
 
 # KP/ with Ctrl: ctrl only -> modifier = 0x04 + 1 = 5
-add_kitty_test 'C-KP/' '^[[57410;5u' xfail
+add_kitty_test 'C-KP/' '^[[57410;5u'
 
 # Wait for all windows to initialize and push kitty flags
 sleep 0.3

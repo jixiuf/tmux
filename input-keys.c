@@ -441,8 +441,9 @@ get_modifier(key_code key)
 		modifier |= 0x20;
 	if (key & KEYC_CAPS_LOCK)
 		modifier |= 0x40;
-	if (key & KEYC_KEYPAD)
-		modifier |= 0x80;
+	/* KEYC_KEYPAD is not mapped to a modifier bit: it means "from the
+	 * numeric keypad", not "Num Lock is active". tmux does not track
+	 * actual Num Lock state, so omit the Num_Lock bit (0x80). */
 	modifier++;
 	return modifier;
 }
