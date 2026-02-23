@@ -254,7 +254,20 @@ check_result "PUA-B-drop-legacy" "" "$actual"
 $TMUX set -g kitty-keys always
 
 #
-# D. Legacy fallback (kitty-keys off)
+# D. Internal key code filtering (User keys should not leak as CSI u)
+#
+
+W=$($TMUX new-window -P -- sh -c \
+	'printf "\033[>1u"; stty raw -echo && cat -tv')
+sleep 0.3
+$TMUX send-keys -t"$W" 'User0' 'EOL'
+sleep 0.2
+actual=$($TMUX capturep -pt"$W" | head -1 | sed -e 's/EOL.*$//')
+$TMUX kill-window -t"$W" 2>/dev/null
+check_result "internal-key-filter" "" "$actual" "xfail"
+
+#
+# E. Legacy fallback (kitty-keys off)
 #
 
 $TMUX set -g kitty-keys off
