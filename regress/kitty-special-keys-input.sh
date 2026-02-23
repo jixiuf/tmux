@@ -179,7 +179,7 @@ check_result () {
 check_result "Delete (^[[3~)"  "^[[3~"
 check_result "F5 (^[[15~)"    "^[[15~"
 check_result "Up (^[[A)"      "^[[A"
-check_result "F3 (^[[R)"      "^[[R" xfail
+check_result "F3 (^[[R)"      "^[[R"
 
 $TMUX kill-server 2>/dev/null
 
