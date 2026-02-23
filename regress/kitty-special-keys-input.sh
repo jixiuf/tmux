@@ -185,7 +185,7 @@ check_result "F5 (^[[15~)"    "^[[15~"
 check_result "Up (^[[A)"      "^[[A"
 check_result "F3 (^[[R)"      "^[[R"
 # U+00E9 (é) via kitty CSI-u: cat -v shows M-CM-)
-check_result "U+00E9 (M-CM-)" "M-CM-)" xfail
+check_result "U+00E9 (M-CM-)" "M-CM-)"
 
 $TMUX kill-server 2>/dev/null
 
