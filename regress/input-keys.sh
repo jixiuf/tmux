@@ -39,29 +39,40 @@ add_test () {
 }
 
 check_tests () {
-	# Send all keys first.
+	# Send all keys in a single tmux invocation.
+	set --
 	i=0
 	while [ "$i" -lt "$n" ]; do
-		W=$(cat "$TMPDIR/win_$i")
-		key=$(cat "$TMPDIR/key_$i")
-		$TMUX send-keys -t"$W" "$key" 'EOL' 2>/dev/null
+		IFS= read -r W < "$TMPDIR/win_$i"
+		IFS= read -r key < "$TMPDIR/key_$i"
+		if [ "$i" -gt 0 ]; then
+			set -- "$@" ";"
+		fi
+		set -- "$@" send-keys -t"$W" "$key" EOL
 		i=$((i + 1))
 	done
+	$TMUX "$@" 2>/dev/null
 
 	# Let all outputs arrive.
 	sleep 1
 
-	# Check all results.
+	# Capture all panes at once via source-file.
 	i=0
 	while [ "$i" -lt "$n" ]; do
-		W=$(cat "$TMPDIR/win_$i")
-		key=$(cat "$TMPDIR/key_$i")
-		expected_code=$(cat "$TMPDIR/exp_$i")
+		IFS= read -r W < "$TMPDIR/win_$i"
+		printf 'capture-pane -t%s\nsave-buffer "%s/out_%d"\ndelete-buffer\n' \
+			"$W" "$TMPDIR" "$i"
+		i=$((i + 1))
+	done > "$TMPDIR/capture_cmds"
+	$TMUX source-file "$TMPDIR/capture_cmds"
 
-		output=$($TMUX capturep -pt"$W" 2>/dev/null)
-		actual_code=$(printf '%s\n' "$output" | \
-				      head -1 | \
-				      sed -e 's/EOL.*$//')
+	# Check all results from saved files.
+	i=0
+	while [ "$i" -lt "$n" ]; do
+		IFS= read -r key < "$TMPDIR/key_$i"
+		IFS= read -r expected_code < "$TMPDIR/exp_$i"
+		IFS= read -r first_line < "$TMPDIR/out_$i" 2>/dev/null
+		actual_code=${first_line%%EOL*}
 
 		if [ "$actual_code" = "$expected_code" ]; then
 			if [ -n "$VERBOSE" ]; then
@@ -74,6 +85,8 @@ check_tests () {
 		i=$((i + 1))
 	done
 
+	# Clean up batch files.
+	rm -f "$TMPDIR"/out_* "$TMPDIR/capture_cmds"
 	n=0
 }
 
