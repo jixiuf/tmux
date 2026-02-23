@@ -38,7 +38,7 @@ assert_key () {
 	format_string=$(format_string "$expected_name")
 
 	$TMUX2 command-prompt -k 'display-message -pl '"$format_string" > "$TMP" &
-	sleep 0.05
+	sleep 0.01
 
 	$TMUX send-keys $keys
 
