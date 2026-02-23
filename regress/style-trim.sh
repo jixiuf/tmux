@@ -34,7 +34,7 @@ exit_status=0
 check() {
 	v=$($TMUX display -p "$1")
 	$TMUX set -g status-format[0] "$1"
-	sleep 1
+	sleep 0.2
 	r=$($TMUX2 capturep -Cep|tail -1|sed 's|\\033\[||g')
 
 	if [ "$v" != "$2" -o "$r" != "$3" ]; then
