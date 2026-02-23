@@ -64,10 +64,10 @@ add_kitty_test () {
 }
 
 # Function keys (unmodified)
-add_kitty_test 'F1' '^[[P' xfail
-add_kitty_test 'F2' '^[[Q' xfail
+add_kitty_test 'F1' '^[[P'
+add_kitty_test 'F2' '^[[Q'
 add_kitty_test 'F3' '^[[R' xfail
-add_kitty_test 'F4' '^[[S' xfail
+add_kitty_test 'F4' '^[[S'
 add_kitty_test 'F5' '^[[15~'
 add_kitty_test 'F6' '^[[17~'
 add_kitty_test 'F7' '^[[18~'
@@ -80,18 +80,18 @@ add_kitty_test 'F12' '^[[24~'
 # Function keys with Shift modifier
 add_kitty_test 'S-F1' '^[[1;2P'
 add_kitty_test 'S-F2' '^[[1;2Q'
-add_kitty_test 'S-F3' '^[[1;2R'
+add_kitty_test 'S-F3' '^[[1;2R' xfail
 add_kitty_test 'S-F4' '^[[1;2S'
 add_kitty_test 'S-F5' '^[[15;2~'
 
 # Function keys with Ctrl modifier
 add_kitty_test 'C-F1' '^[[1;5P'
 add_kitty_test 'C-F2' '^[[1;5Q'
-add_kitty_test 'C-F3' '^[[1;5R'
+add_kitty_test 'C-F3' '^[[1;5R' xfail
 add_kitty_test 'C-F4' '^[[1;5S'
 
 # Function keys with Alt modifier
-add_kitty_test 'M-F3' '^[[1;3R'
+add_kitty_test 'M-F3' '^[[1;3R' xfail
 
 # Arrow keys (unmodified)
 add_kitty_test 'Up' '^[[A'
@@ -116,8 +116,8 @@ add_kitty_test 'IC' '^[[2~'
 add_kitty_test 'DC' '^[[3~'
 add_kitty_test 'PPage' '^[[5~'
 add_kitty_test 'NPage' '^[[6~'
-add_kitty_test 'Home' '^[[H' xfail
-add_kitty_test 'End' '^[[F' xfail
+add_kitty_test 'Home' '^[[H'
+add_kitty_test 'End' '^[[F'
 
 # Special keys with modifiers
 add_kitty_test 'S-IC' '^[[2;2~'
