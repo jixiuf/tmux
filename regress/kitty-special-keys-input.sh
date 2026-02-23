@@ -17,6 +17,7 @@ sleep 1
 
 RED=$(printf '\033[31m')
 GREEN=$(printf '\033[32m')
+YELLOW=$(printf '\033[33m')
 RESET=$(printf '\033[0m')
 
 exit_status=0
@@ -114,6 +115,10 @@ else:
     os.write(master, b'\033[1;1A')
     time.sleep(0.2)
 
+    # F3: CSI 1;1R
+    os.write(master, b'\033[1;1R')
+    time.sleep(0.2)
+
     # End marker
     os.write(master, b'Z')
     time.sleep(0.5)
@@ -138,25 +143,43 @@ actual=$($TMUX capturep -pt0:0.0 | head -1)
 check_result () {
 	label=$1
 	expected=$2
+	xfail=$3
 
-	case "$actual" in
-	*"$expected"*)
-		[ -n "$VERBOSE" ] && \
-			printf '%s[PASS]%s %s found in output\n' \
-			"$GREEN" "$RESET" "$label"
-		;;
-	*)
-		printf '%s[FAIL]%s %s not found in output (got: %s)\n' \
-			"$RED" "$RESET" "$label" "$actual"
-		exit_status=1
-		;;
-	esac
+	if [ "$xfail" = "xfail" ]; then
+		case "$actual" in
+		*"$expected"*)
+			printf '%s[XPASS]%s %s found in output\n' \
+				"$RED" "$RESET" "$label"
+			exit_status=1
+			;;
+		*)
+			[ -n "$VERBOSE" ] || [ -n "$STRICT" ] && \
+				printf '%s[XFAIL]%s %s not found in output (got: %s)\n' \
+				"$YELLOW" "$RESET" "$label" "$actual"
+			[ -n "$STRICT" ] && exit_status=1
+			;;
+		esac
+	else
+		case "$actual" in
+		*"$expected"*)
+			[ -n "$VERBOSE" ] && \
+				printf '%s[PASS]%s %s found in output\n' \
+				"$GREEN" "$RESET" "$label"
+			;;
+		*)
+			printf '%s[FAIL]%s %s not found in output (got: %s)\n' \
+				"$RED" "$RESET" "$label" "$actual"
+			exit_status=1
+			;;
+		esac
+	fi
 }
 
-# Delete → ^[[3~ , F5 → ^[[15~ , Up → ^[[A
+# Delete → ^[[3~ , F5 → ^[[15~ , Up → ^[[A , F3 → ^[[R
 check_result "Delete (^[[3~)"  "^[[3~"
 check_result "F5 (^[[15~)"    "^[[15~"
 check_result "Up (^[[A)"      "^[[A"
+check_result "F3 (^[[R)"      "^[[R" xfail
 
 $TMUX kill-server 2>/dev/null
 
