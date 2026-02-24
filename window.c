@@ -1250,8 +1250,10 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme != NULL) {
+		if (key & KEYC_RELEASE)
+			return (0);
 		if (wme->mode->key != NULL && c != NULL) {
-			key &= ~KEYC_MASK_FLAGS;
+			key &= ~(KEYC_MASK_FLAGS|KEYC_CAPS_LOCK);
 			wme->mode->key(wme, c, s, wl, key, m);
 		}
 		return (0);

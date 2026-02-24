@@ -1318,6 +1318,11 @@ status_prompt_key(struct client *c, key_code key)
 	struct utf8_data	 tmp;
 	int			 keys, word_is_separators;
 
+	if (key & KEYC_RELEASE)
+		return (0);
+
+	/* Strip CapsLock — not meaningful for key dispatch. */
+	key &= ~KEYC_CAPS_LOCK;
 	if (c->prompt_flags & PROMPT_KEY) {
 		keystring = key_string_lookup_key(key, 0);
 		c->prompt_inputcb(c, c->prompt_data, keystring, 1);

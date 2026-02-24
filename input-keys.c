@@ -34,7 +34,6 @@ static void	 input_key_mouse(struct window_pane *, struct mouse_event *);
 static int input_key_kitty(struct screen *s,
 						   struct bufferevent *bev,key_code key);
 u_int get_modifier(key_code key);
-u_int get_legacy_modifier(key_code key);
 
 /* Entry in the key tree. */
 struct input_key_entry {
@@ -406,6 +405,10 @@ input_key_pane(struct window_pane *wp, key_code key, struct mouse_event *m)
 		    key_string_lookup_key(key, 1), wp->id);
 	}
 
+	/* Pane's process has exited, nothing to write to. */
+	if (wp->event == NULL)
+		return (0);
+
 	if (KEYC_IS_MOUSE(key)) {
 		if (m != NULL && m->wp != -1 && (u_int)m->wp == wp->id)
 			input_key_mouse(wp, m);
@@ -426,7 +429,7 @@ input_key_write(const char *from, struct bufferevent *bev, const char *data,
 u_int
 get_modifier(key_code key)
 {
-	u_int modifier=0;
+	u_int modifier = 0;
 	if (key & KEYC_SHIFT)
 		modifier |= 0x1;
 	if (key & KEYC_META)
@@ -447,20 +450,6 @@ get_modifier(key_code key)
 	modifier++;
 	return modifier;
 }
-u_int
-get_legacy_modifier(key_code key)
-{
-	u_int modifier=0;
-	if (key & KEYC_SHIFT)
-		modifier |= 0x1;
-	if (key & (KEYC_META|KEYC_SUPER|
-			   KEYC_HYPER|KEYC_REAL_META))
-		modifier |= 0x2;
-	if (key & KEYC_CTRL)
-		modifier |= 0x4;
-	modifier++;
-	return modifier;
-}
 
 
 /* 0:succ,-1 fail */
@@ -471,19 +460,25 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 	char		final,	 tmp[64];
 	u_int number,modifier;
 	struct utf8_data	 ud;
-	int disambiguate,all_as_escapes,is_release;
+	int disambiguate,all_as_escapes,release,report_event;
 	enum kitty_kbd_flags flags;
 
 	number = 0;
 	flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
 	disambiguate = flags & KITTY_KBD_DISAMBIGUATE;
 	all_as_escapes = flags & KITTY_KBD_REPORT_ALL;
-	is_release = !!(key & KEYC_RELEASE);
+	report_event = flags & KITTY_KBD_REPORT_EVENT;
+	release = (key & KEYC_RELEASE) != 0;
+
+	/* KEYC_BTAB is Tab+Shift but doesn't carry KEYC_SHIFT. Convert. */
+	if ((key & KEYC_MASK_KEY) == KEYC_BTAB)
+		key = (key & ~KEYC_MASK_KEY) | '\011' | KEYC_SHIFT;
+
 	onlykey = (key & KEYC_MASK_KEY);
 	modifier = get_modifier(key);
 
-	log_debug("%s: key=0x%llx onlykey=0x%llx modifier=%u flags=%u disambiguate=%d",
-		__func__, key, onlykey, modifier, flags, disambiguate);
+	log_debug("%s: key=0x%llx onlykey=0x%llx modifier=%u flags=%u disambiguate=%d release=%d",
+		__func__, key, onlykey, modifier, flags, disambiguate, release);
 
 	/* Keys handled by the switch below have valid kitty encodings.
 	 * Internal key codes (focus, paste, mouse, etc.) that fall
@@ -491,15 +486,22 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 
     if (!disambiguate) return (-1);
 
+	/* Release events require REPORT_EVENT flag on the pane. */
+	if (release && !report_event)
+		return (0);  /* silently discard */
+
 	/*
-	 * If this is a normal 7-bit key with no modifiers, just send it.
-	 * If it is a UTF-8 key with no modifiers, send it.
-	 * Keys with modifiers need to go through kitty encoding below.
-	 * Release events must always use full CSI encoding for the :3 suffix.
+	/*
+	 * If this is a normal 7-bit key with no modifiers and REPORT_ALL
+	 * is not active, just send it raw. Same for UTF-8 keys.
+	 * When REPORT_ALL is active, all keys must use CSI u encoding.
+	 * Exception: Escape (27) must always use CSI 27 u in disambiguate
+	 * mode to prevent ambiguity with escape sequence starts.
+	 * Release events must always use CSI encoding (need :3 event type).
 	 */
-	if (modifier == 1 && !is_release) {
-		/* No modifiers present */
-		if (onlykey <= 0x7f) {
+	if (modifier == 1 && !all_as_escapes && !release) {
+		/* No modifiers present, not REPORT_ALL */
+		if (onlykey <= 0x7f && onlykey != 27) {
 			ud.data[0] = onlykey;
 			input_key_write(__func__, bev, &ud.data[0], 1);
 			return (0);
@@ -510,17 +512,15 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 			return (0);
 		}
 	}
-	if(all_as_escapes)
+	if(all_as_escapes || release)
         goto emit_escapes;
 
-	if (modifier == 1 && !is_release) {
-		switch(onlykey){
-		case '\t':
-		case '\r':
-		case KEYC_BSPACE:
-			return -1;
-		}
-	}
+	/*
+	 * In disambiguate-only mode, unmodified Bspace uses legacy encoding
+	 * (Tab and CR are already handled by the raw-byte early return above).
+	 */
+	if (modifier == 1 && (key & KEYC_MASK_KEY) == KEYC_BSPACE)
+		return -1;
 emit_escapes:
 	/* CSI 1; modifiers [ABCDEFHPQS] */
 	/* CSI [ABCDEFHPQS] */
@@ -644,21 +644,31 @@ emit_escapes:
     case KEYC_ISO_LEVEL3_SHIFT:	number = 57453; final='u';break;
     case KEYC_ISO_LEVEL5_SHIFT:	number = 57454; final='u';break;
 	default:
-		if ((onlykey >= KEYC_BASE && onlykey < KEYC_BASE_END) ||
-		    (onlykey >= KEYC_USER && onlykey < KEYC_USER_END)) {
-			log_debug("%s: ignoring internal key 0x%llx",
-			    __func__, key);
-			return (-1);
+		/*
+		 * For Unicode keys, convert from internal utf8_char
+		 * encoding to the actual Unicode codepoint.
+		 */
+		if (KEYC_IS_UNICODE(onlykey)) {
+			wchar_t wc;
+			utf8_to_data(onlykey, &ud);
+			if (utf8_towc(&ud, &wc) == UTF8_DONE)
+				number = (u_int)wc;
+			else
+				return (-1);
+		} else if (onlykey <= 0x7f) {
+			number = onlykey;
+		} else {
+			return (-1); /* Internal key, no kitty encoding */
 		}
-		number=onlykey;
 		final='u';
 	}
     if (final == 'u' || final == '~') {
-		/* CSI number ; modifiers [: event_type] ~ */
-		/* CSI number ; modifiers [: event_type] u */
-		if(is_release){
-			xsnprintf(tmp, sizeof tmp, "\033[%u;%u:3%c",number,modifier,final);
-		}else if(modifier==1){
+		/* CSI number ; modifiers:evtype ~ */
+		/* CSI number ; modifiers:evtype u */
+		if (release) {
+			xsnprintf(tmp, sizeof tmp, "\033[%u;%u:3%c",
+			    number, modifier, final);
+		} else if(modifier==1){
 			xsnprintf(tmp, sizeof tmp, "\033[%u%c",number,final);
 		}else{
 			xsnprintf(tmp, sizeof tmp, "\033[%u;%u%c",number,modifier,final);
@@ -666,15 +676,16 @@ emit_escapes:
 		input_key_write(__func__, bev, tmp, strlen(tmp));
 		return 0;
 	}else{
-		/* CSI 1; modifiers [: event_type] [ABCDEFHPQS] */
-		/* CSI [ABCDEFHPQS] */
-		if(is_release){
-			xsnprintf(tmp, sizeof tmp, "\033[%u;%u:3%c",number,modifier,final);
-		}else if(modifier==1){
-			xsnprintf(tmp, sizeof tmp, "\033[%c",final);
-		}else{
-			xsnprintf(tmp, sizeof tmp, "\033[%u;%u%c",number,modifier,final);
-		}
+		/* CSI 1; modifiers:evtype [ABCDEFHPQS]
+		 * In kitty disambiguate mode, always include 1;modifier
+		 * to distinguish from ANSI sequences (e.g., F3 CSI R vs
+		 * CPR CSI row;col R). */
+		if (release)
+			xsnprintf(tmp, sizeof tmp, "\033[%u;%u:3%c",
+			    number, modifier, final);
+		else
+			xsnprintf(tmp, sizeof tmp, "\033[%u;%u%c",
+			    number, modifier, final);
 		input_key_write(__func__, bev, tmp, strlen(tmp));
 		return 0;
 	}
@@ -873,6 +884,15 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		if (key & KEYC_RELEASE)
 			return (0);
 	}
+
+	/* CapsLock is only meaningful for kitty encoding (above). Strip it
+	 * before any legacy encoding path — legacy doesn't understand it. */
+	key &= ~KEYC_CAPS_LOCK;
+
+	/* Release events have no legacy encoding — discard silently. */
+	if (key & KEYC_RELEASE)
+		return (0);
+
 	/* legacy encoding key events */
 	/* treat these modifers as alt */
 	if(key & (KEYC_SUPER|KEYC_HYPER|KEYC_REAL_META))

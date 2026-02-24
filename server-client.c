@@ -2412,12 +2412,14 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		goto out;
 	wl = s->curw;
 
-	/* Update the activity timer. */
-	memcpy(&c->last_activity_time, &c->activity_time,
-	    sizeof c->last_activity_time);
-	if (gettimeofday(&c->activity_time, NULL) != 0)
-		fatal("gettimeofday failed");
-	session_update_activity(s, &c->activity_time);
+	/* Update the activity timer (skip for release events). */
+	if (~key & KEYC_RELEASE) {
+		memcpy(&c->last_activity_time, &c->activity_time,
+		    sizeof c->last_activity_time);
+		if (gettimeofday(&c->activity_time, NULL) != 0)
+			fatal("gettimeofday failed");
+		session_update_activity(s, &c->activity_time);
+	}
 
 	/* Check for mouse keys. */
 	m->valid = 0;
@@ -2454,6 +2456,10 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	/* Forward if bracket pasting. */
 	if (server_client_is_bracket_paste (c, key))
 		goto paste_key;
+
+	/* Release events bypass key bindings — forward directly to pane. */
+	if (key & KEYC_RELEASE)
+		goto forward_key;
 
 	/* Treat everything as a regular key when pasting is detected. */
 	if (!KEYC_IS_MOUSE(key) &&
@@ -2671,6 +2677,17 @@ server_client_handle_key(struct client *c, struct key_event *event)
 	if (event->key == KEYC_REPORT_DARK_THEME) {
 		server_client_report_theme(c, THEME_DARK);
 		return (0);
+	}
+
+	/*
+	 * Release events bypass overlays, prompts, and messages — queue
+	 * directly for the key callback where the release bypass forwards
+	 * them to the pane.
+	 */
+	if (event->key & KEYC_RELEASE) {
+		item = cmdq_get_callback(server_client_key_callback, event);
+		cmdq_append(c, item);
+		return (1);
 	}
 
 	/*
@@ -3063,6 +3080,26 @@ server_client_reset_state(struct client *c)
 	/* Set the terminal mode and reset attributes. */
 	tty_update_mode(tty, mode, s);
 	tty_reset(tty);
+
+	/*
+	 * Update outer terminal kitty keyboard mode to match the active
+	 * pane's flags. Use CSI = flags ; 1 u (set/replace) to avoid
+	 * growing the outer terminal's stack.
+	 *
+	 * For "on" (==1), only sync to terminals known to support kitty
+	 * (TTY_HAVEDA_KITTY). For "always" (==2), sync unconditionally.
+	 */
+	if (s != NULL && options_get_number(global_options, "kitty-keys") &&
+	    (options_get_number(global_options, "kitty-keys") == 2 ||
+	    (tty->flags & TTY_HAVEDA_KITTY))) {
+		int new_kitty = s->kitty_kbd.flags[s->kitty_kbd.idx];
+		if (new_kitty != tty->kitty_state) {
+			char seq[32];
+			xsnprintf(seq, sizeof seq, "\033[=%du", new_kitty);
+			tty_puts(tty, seq);
+			tty->kitty_state = new_kitty;
+		}
+	}
 
 	/* All writing must be done, send a sync end (if it was started). */
 	tty_sync_end(tty);
@@ -3469,6 +3506,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 			fatal("gettimeofday failed");
 
 		tty_start_tty(&c->tty);
+		tty_send_requests(&c->tty);
 		server_redraw_client(c);
 		recalculate_sizes();
 
