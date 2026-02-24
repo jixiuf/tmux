@@ -1219,14 +1219,6 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 
 		*size = end + 1;
 
-		switch (evtype){
-		case 2:
-			evtype = 1;			/* repeat as press */
-			break;
-		case 3:					/* TODO: handle release event */
-			return -2;			/* discard key of release now */
-		}
-
 		/*  TODO: don't known how to handle
          *	alternate keys and associated text
          *  just ignore them now.
@@ -1390,6 +1382,16 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		evtype = 1;			/* repeat as press */
 		break;
 	case 3:					/* release */
+		if (c->session != NULL &&
+		    c->session->curw != NULL &&
+		    c->session->curw->window->active != NULL) {
+			struct screen *s =
+			    c->session->curw->window->active->screen;
+			if (s != NULL &&
+			    (s->kitty_kbd.flags[s->kitty_kbd.idx] &
+			     KITTY_KBD_REPORT_EVENT))
+				break;		/* forward to pane */
+		}
 		return (-2);			/* discard */
 	}
 
@@ -1416,6 +1418,11 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		log_debug("%s: kitty key %.*s is %llx (%s)", c->name,
 				  (int)*size, buf, nkey, key_string_lookup_key(nkey, 1));
 	}
+
+	/* Tag release events so input_key_kitty can encode the event type. */
+	if (evtype == 3)
+		nkey |= KEYC_RELEASE;
+
 	*key = nkey;
 	return (0);
 }

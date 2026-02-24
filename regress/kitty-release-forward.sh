@@ -172,10 +172,9 @@ check_result () {
 }
 
 # Release events should be forwarded with :3 event type when flag 2 active.
-# All three fail because the event type parsing is broken.
-check_result "'a' release (^[[97;1:3u)"     "^[[97;1:3u"  xfail
-check_result "Insert release (^[[2;1:3~)"    "^[[2;1:3~"   xfail
-check_result "Up release (^[[1;1:3A)"        "^[[1;1:3A"   xfail
+check_result "'a' release (^[[97;1:3u)"     "^[[97;1:3u"
+check_result "Insert release (^[[2;1:3~)"    "^[[2;1:3~"
+check_result "Up release (^[[1;1:3A)"        "^[[1;1:3A"
 
 # Press event should be forwarded normally.
 check_result "'b' press forwarded as 'b'"    "b"

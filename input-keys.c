@@ -471,13 +471,14 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 	char		final,	 tmp[64];
 	u_int number,modifier;
 	struct utf8_data	 ud;
-	int disambiguate,all_as_escapes;
+	int disambiguate,all_as_escapes,is_release;
 	enum kitty_kbd_flags flags;
 
 	number = 0;
 	flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
 	disambiguate = flags & KITTY_KBD_DISAMBIGUATE;
 	all_as_escapes = flags & KITTY_KBD_REPORT_ALL;
+	is_release = !!(key & KEYC_RELEASE);
 	onlykey = (key & KEYC_MASK_KEY);
 	modifier = get_modifier(key);
 
@@ -494,8 +495,9 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 	 * If this is a normal 7-bit key with no modifiers, just send it.
 	 * If it is a UTF-8 key with no modifiers, send it.
 	 * Keys with modifiers need to go through kitty encoding below.
+	 * Release events must always use full CSI encoding for the :3 suffix.
 	 */
-	if (modifier == 1) {
+	if (modifier == 1 && !is_release) {
 		/* No modifiers present */
 		if (onlykey <= 0x7f) {
 			ud.data[0] = onlykey;
@@ -511,7 +513,7 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 	if(all_as_escapes)
         goto emit_escapes;
 
-	if (modifier == 1) {
+	if (modifier == 1 && !is_release) {
 		switch(onlykey){
 		case '\t':
 		case '\r':
@@ -652,9 +654,11 @@ emit_escapes:
 		final='u';
 	}
     if (final == 'u' || final == '~') {
-		/* CSI number ; modifiers ~ */
-		/* CSI number ; modifiers u */
-		if(modifier==1){
+		/* CSI number ; modifiers [: event_type] ~ */
+		/* CSI number ; modifiers [: event_type] u */
+		if(is_release){
+			xsnprintf(tmp, sizeof tmp, "\033[%u;%u:3%c",number,modifier,final);
+		}else if(modifier==1){
 			xsnprintf(tmp, sizeof tmp, "\033[%u%c",number,final);
 		}else{
 			xsnprintf(tmp, sizeof tmp, "\033[%u;%u%c",number,modifier,final);
@@ -662,9 +666,11 @@ emit_escapes:
 		input_key_write(__func__, bev, tmp, strlen(tmp));
 		return 0;
 	}else{
-		/* CSI 1; modifiers [ABCDEFHPQS] */
+		/* CSI 1; modifiers [: event_type] [ABCDEFHPQS] */
 		/* CSI [ABCDEFHPQS] */
-		if(modifier==1){
+		if(is_release){
+			xsnprintf(tmp, sizeof tmp, "\033[%u;%u:3%c",number,modifier,final);
+		}else if(modifier==1){
 			xsnprintf(tmp, sizeof tmp, "\033[%c",final);
 		}else{
 			xsnprintf(tmp, sizeof tmp, "\033[%u;%u%c",number,modifier,final);
@@ -672,7 +678,6 @@ emit_escapes:
 		input_key_write(__func__, bev, tmp, strlen(tmp));
 		return 0;
 	}
-	return -1;
 }
 
 
@@ -863,6 +868,9 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 		int result = input_key_kitty(s,bev,key);
 		log_debug("%s: input_key_kitty returned %d", __func__, result);
 		if(result == 0)
+			return (0);
+		/* Release events can't be expressed in legacy encoding; drop them. */
+		if (key & KEYC_RELEASE)
 			return (0);
 	}
 	/* legacy encoding key events */
