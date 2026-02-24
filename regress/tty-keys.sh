@@ -3,7 +3,8 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
-[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+TESTDIR=$(cd -- "$(dirname "$0")" && pwd)
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f "$TESTDIR/../tmux")
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 TMUX2="$TEST_TMUX -Ltest2"
@@ -38,7 +39,7 @@ assert_key () {
 	format_string=$(format_string "$expected_name")
 
 	$TMUX2 command-prompt -k 'display-message -pl '"$format_string" > "$TMP" &
-	sleep 0.01
+	sleep 0.03
 
 	$TMUX send-keys $keys
 

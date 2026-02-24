@@ -179,11 +179,13 @@ check_result () {
 	fi
 }
 
-# Delete → ^[[3~ , F5 → ^[[15~ , Up → ^[[A , F3 → ^[[R
-check_result "Delete (^[[3~)"  "^[[3~"
-check_result "F5 (^[[15~)"    "^[[15~"
-check_result "Up (^[[A)"      "^[[A"
-check_result "F3 (^[[R)"      "^[[R"
+# Delete → ^[[3~ , F5 → ^[[15~ , Up → ^[[1;1A , F3 → ^[[1;1R
+# In kitty disambiguate mode, letter-final keys (cursor keys, F1-F4) always
+# include the number and modifier fields, even when unmodified (;1 = no modifier).
+check_result "Delete (^[[3~)"    "^[[3~"
+check_result "F5 (^[[15~)"      "^[[15~"
+check_result "Up (^[[1;1A)"     "^[[1;1A"
+check_result "F3 (^[[1;1R)"     "^[[1;1R"
 # U+00E9 (é) via kitty CSI-u: cat -v shows M-CM-)
 check_result "U+00E9 (M-CM-)" "M-CM-)"
 

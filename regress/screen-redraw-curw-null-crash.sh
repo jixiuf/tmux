@@ -49,7 +49,7 @@ $TMUX killw -t target:1 2>/dev/null
 sleep 0.5
 
 if $TMUX has -t keepalive 2>/dev/null; then
-	echo "PASS: server survived screen_redraw with curw=NULL"
+	[ -n "$VERBOSE" ] && echo "PASS: server survived screen_redraw with curw=NULL"
 else
 	echo "FAIL: server crashed (screen_redraw curw=NULL dereference)"
 	RC=1

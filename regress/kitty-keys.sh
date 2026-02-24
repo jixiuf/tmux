@@ -3,8 +3,9 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
-[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -Ltest"
+TESTDIR=$(cd -- "$(dirname "$0")" && pwd)
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f "$TESTDIR/../tmux")
+TMUX="$TEST_TMUX -Lkkys"
 $TMUX kill-server 2>/dev/null
 sleep 1
 $TMUX -f/dev/null new -x20 -y2 -d || exit 1
@@ -64,10 +65,10 @@ add_kitty_test () {
 }
 
 # Function keys (unmodified)
-add_kitty_test 'F1' '^[[P'
-add_kitty_test 'F2' '^[[Q'
-add_kitty_test 'F3' '^[[R'
-add_kitty_test 'F4' '^[[S'
+add_kitty_test 'F1' '^[[1;1P'
+add_kitty_test 'F2' '^[[1;1Q'
+add_kitty_test 'F3' '^[[1;1R'
+add_kitty_test 'F4' '^[[1;1S'
 add_kitty_test 'F5' '^[[15~'
 add_kitty_test 'F6' '^[[17~'
 add_kitty_test 'F7' '^[[18~'
@@ -94,10 +95,10 @@ add_kitty_test 'C-F4' '^[[1;5S'
 add_kitty_test 'M-F3' '^[[1;3R'
 
 # Arrow keys (unmodified)
-add_kitty_test 'Up' '^[[A'
-add_kitty_test 'Down' '^[[B'
-add_kitty_test 'Right' '^[[C'
-add_kitty_test 'Left' '^[[D'
+add_kitty_test 'Up' '^[[1;1A'
+add_kitty_test 'Down' '^[[1;1B'
+add_kitty_test 'Right' '^[[1;1C'
+add_kitty_test 'Left' '^[[1;1D'
 
 # Arrow keys with modifiers
 add_kitty_test 'S-Up' '^[[1;2A'
@@ -116,8 +117,8 @@ add_kitty_test 'IC' '^[[2~'
 add_kitty_test 'DC' '^[[3~'
 add_kitty_test 'PPage' '^[[5~'
 add_kitty_test 'NPage' '^[[6~'
-add_kitty_test 'Home' '^[[H'
-add_kitty_test 'End' '^[[F'
+add_kitty_test 'Home' '^[[1;1H'
+add_kitty_test 'End' '^[[1;1F'
 
 # Special keys with modifiers
 add_kitty_test 'S-IC' '^[[2;2~'
@@ -131,6 +132,9 @@ add_kitty_test 'a' 'a'
 add_kitty_test 'z' 'z'
 add_kitty_test '0' '0'
 add_kitty_test '9' '9'
+
+# Escape key (must use CSI 27 u in disambiguate mode, not raw 0x1B)
+add_kitty_test 'Escape' '^[[27u'
 
 # Modified ASCII keys
 add_kitty_test 'C-a' '^[[97;5u'
@@ -167,7 +171,7 @@ W=$($TMUX new-window -P -- sh -c \
 sleep 0.3
 actual=$($TMUX capturep -pt"$W" | head -1)
 $TMUX kill-window -t"$W" || exit 1
-check_result "query" "^[[?0u" "$actual"
+check_result "query" "^[[?1u" "$actual"
 
 #
 # C. PUA character filtering (supplementary PUA should be dropped)

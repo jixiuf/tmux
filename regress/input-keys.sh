@@ -3,7 +3,8 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
-[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+TESTDIR=$(cd -- "$(dirname "$0")" && pwd)
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f "$TESTDIR/../tmux")
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 sleep 1
@@ -231,6 +232,7 @@ add_test 'F3' "^[OR"
 add_test 'F4' "^[OS"
 add_test 'F5' "^[[15~"
 add_test 'F6' "^[[17~"
+add_test 'F7' "^[[18~"
 add_test 'F8' "^[[19~"
 add_test 'F9' "^[[20~"
 add_test 'F10' "^[[21~"
@@ -320,6 +322,7 @@ add_extended_test 'F3' "^[[1;_R"
 add_extended_test 'F4' "^[[1;_S"
 add_extended_test 'F5' "^[[15;_~"
 add_extended_test 'F6' "^[[17;_~"
+add_extended_test 'F7' "^[[18;_~"
 add_extended_test 'F8' "^[[19;_~"
 add_extended_test 'F9' "^[[20;_~"
 add_extended_test 'F10' "^[[21;_~"
