@@ -114,8 +114,8 @@ fi
 flags=$(cat "$RESULT")
 
 # Expected: 3 (the flags we pushed)
-# Bug: push masks with KITTY_KBD_SUPPORTED (=1), so flags=1
-check_result "kitty-query-active-flags" "3" "$flags" xfail
+# Push flags=3 (disambiguate|report_event), query should return 3
+check_result "kitty-query-active-flags" "3" "$flags"
 
 $TMUX kill-server 2>/dev/null
 exit $exit_status
