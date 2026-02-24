@@ -2483,7 +2483,7 @@ table_changed:
 	 */
 	prefix = (key_code)options_get_number(s->options, "prefix");
 	prefix2 = (key_code)options_get_number(s->options, "prefix2");
-	key0 = (key & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS));
+	key0 = (key & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS)) & ~KEYC_CAPS_LOCK;
 	if ((key0 == (prefix & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS)) ||
 	    key0 == (prefix2 & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS))) &&
 	    strcmp(table->name, "prefix") != 0) {

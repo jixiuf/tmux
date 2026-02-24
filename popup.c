@@ -562,6 +562,7 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 	size_t			 len;
 	u_int			 px, py, x;
 	enum { NONE, LEFT, RIGHT, TOP, BOTTOM } border = NONE;
+	key_code		 pkey = event->key & ~KEYC_CAPS_LOCK;
 
 	if (pd->md != NULL) {
 		if (menu_key_cb(c, pd->md, event) == 1) {
@@ -617,10 +618,11 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 	}
 	if ((((pd->flags & (POPUP_CLOSEEXIT|POPUP_CLOSEEXITZERO)) == 0) ||
 	    pd->job == NULL) &&
-	    (event->key == '\033' || event->key == ('c'|KEYC_CTRL)))
+	    (pkey == '\033' || pkey == ('c'|KEYC_CTRL)))
 		return (1);
 	if (pd->job == NULL && (pd->flags & POPUP_CLOSEANYKEY) &&
-	    !KEYC_IS_MOUSE(event->key) && !KEYC_IS_PASTE(event->key))
+	    !KEYC_IS_MOUSE(event->key) && !KEYC_IS_PASTE(event->key) &&
+	    !(event->key & KEYC_RELEASE))
 		return (1);
 	if (pd->job != NULL) {
 		if (KEYC_IS_MOUSE(event->key)) {
