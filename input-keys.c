@@ -491,7 +491,6 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 		return (0);  /* silently discard */
 
 	/*
-	/*
 	 * If this is a normal 7-bit key with no modifiers and REPORT_ALL
 	 * is not active, just send it raw. Same for UTF-8 keys.
 	 * When REPORT_ALL is active, all keys must use CSI u encoding.
