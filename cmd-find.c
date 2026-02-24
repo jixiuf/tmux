@@ -883,6 +883,8 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 		fs->wp = server_client_get_pane(c);
 		if (fs->wp == NULL) {
 			cmd_find_from_session(fs, c->session, flags);
+			if (fs->wl == NULL)
+				return (-1);
 			return (0);
 		}
 		fs->s = c->session;
@@ -1015,7 +1017,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 			cmdq_error(item, "no current client");
 			goto error;
 		}
-		if (c->session->curw == NULL)
+		if (c->session == NULL || c->session->curw == NULL)
 			goto error;
 		fs->wl = c->session->curw;
 		fs->wp = c->session->curw->window->active;
