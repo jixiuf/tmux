@@ -1390,14 +1390,6 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 	}
 	*size = end + 1;
 
-	/* Treat repeat as press, propagate release via KEYC_RELEASE. */
-	switch (evtype) {
-	case 2:
-		break;			/* repeat: treat as press */
-	case 3:
-		break;			/* release: propagate */
-	}
-
 	/* Store the key. */
 	bspace = tty->tio.c_cc[VERASE];
 	if (bspace != _POSIX_VDISABLE && number == bspace)
