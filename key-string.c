@@ -264,7 +264,7 @@ key_string_lookup_string(const char *string)
 	enum utf8_state		 more;
 	utf8_char		 uc;
 	char			 m[MB_LEN_MAX + 1];
-	int			 mlen, kitty_keys;
+	int			 mlen;
 
 	/* Is this no key or any key? */
 	if (strcasecmp(string, "None") == 0)
@@ -308,7 +308,6 @@ key_string_lookup_string(const char *string)
 	if (string == NULL || string[0] == '\0')
 		return (KEYC_UNKNOWN);
 
-	kitty_keys = options_get_number(global_options, "kitty-keys");
 	/* Is this a standard ASCII key? */
 	if (string[1] == '\0' && (u_char)string[0] <= 127) {
 		key = (u_char)string[0];
