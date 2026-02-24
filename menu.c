@@ -206,18 +206,15 @@ menu_reapply_styles(struct menu_data *md, struct client *c)
 {
 	struct session		*s = c->session;
 	struct options		*o;
-	struct format_tree	*ft;
 	struct style		 sytmp;
 
 	if (s == NULL || s->curw == NULL)
 		return;
 	o = s->curw->window->options;
 
-	ft = format_create_defaults(NULL, c, s, s->curw, NULL);
-
 	/* Reapply menu style from options. */
 	memcpy(&md->style_gc, &grid_default_cell, sizeof md->style_gc);
-	style_apply(&md->style_gc, o, "menu-style", ft);
+	style_apply(&md->style_gc, o, "menu-style", NULL);
 	if (md->style != NULL) {
 		style_set(&sytmp, &grid_default_cell);
 		if (style_parse(&sytmp, &md->style_gc, md->style) == 0) {
@@ -229,7 +226,7 @@ menu_reapply_styles(struct menu_data *md, struct client *c)
 	/* Reapply selected style from options. */
 	memcpy(&md->selected_style_gc, &grid_default_cell,
 	    sizeof md->selected_style_gc);
-	style_apply(&md->selected_style_gc, o, "menu-selected-style", ft);
+	style_apply(&md->selected_style_gc, o, "menu-selected-style", NULL);
 	if (md->selected_style != NULL) {
 		style_set(&sytmp, &grid_default_cell);
 		if (style_parse(&sytmp, &md->selected_style_gc,
@@ -242,7 +239,7 @@ menu_reapply_styles(struct menu_data *md, struct client *c)
 	/* Reapply border style from options. */
 	memcpy(&md->border_style_gc, &grid_default_cell,
 	    sizeof md->border_style_gc);
-	style_apply(&md->border_style_gc, o, "menu-border-style", ft);
+	style_apply(&md->border_style_gc, o, "menu-border-style", NULL);
 	if (md->border_style != NULL) {
 		style_set(&sytmp, &grid_default_cell);
 		if (style_parse(&sytmp, &md->border_style_gc,
@@ -251,8 +248,6 @@ menu_reapply_styles(struct menu_data *md, struct client *c)
 			md->border_style_gc.bg = sytmp.gc.bg;
 		}
 	}
-
-	format_free(ft);
 }
 
 void
