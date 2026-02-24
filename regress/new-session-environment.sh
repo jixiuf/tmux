@@ -4,7 +4,8 @@
 
 PATH=/bin:/usr/bin
 
-[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+TESTDIR=$(cd -- "$(dirname "$0")" && pwd)
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f "$TESTDIR/../tmux")
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 
