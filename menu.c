@@ -209,7 +209,7 @@ menu_reapply_styles(struct menu_data *md, struct client *c)
 	struct format_tree	*ft;
 	struct style		 sytmp;
 
-	if (s == NULL)
+	if (s == NULL || s->curw == NULL)
 		return;
 	o = s->curw->window->options;
 

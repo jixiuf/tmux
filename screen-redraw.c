@@ -578,10 +578,14 @@ static uint64_t
 screen_redraw_update(struct screen_redraw_ctx *ctx, uint64_t flags)
 {
 	struct client			*c = ctx->c;
-	struct window			*w = c->session->curw->window;
+	struct window			*w;
 	struct window_pane		*wp;
 	int				 redraw;
 	enum pane_lines			 lines;
+
+	if (c == NULL)
+		return (flags);
+	w = c->session->curw->window;
 
 	if (c->message_string != NULL)
 		redraw = status_message_redraw(c);
@@ -662,6 +666,8 @@ screen_redraw_screen(struct client *c)
 		return;
 
 	screen_redraw_set_context(c, &ctx);
+	if (ctx.c == NULL)
+		return;
 
 	flags = screen_redraw_update(&ctx, c->flags);
 	if ((flags & CLIENT_ALLREDRAWFLAGS) == 0)
@@ -706,6 +712,8 @@ screen_redraw_pane(struct client *c, struct window_pane *wp,
 		return;
 
 	screen_redraw_set_context(c, &ctx);
+	if (ctx.c == NULL)
+		return;
 	tty_sync_start(&c->tty);
 	tty_update_mode(&c->tty, c->tty.mode, NULL);
 

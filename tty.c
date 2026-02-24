@@ -1474,7 +1474,8 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 {
 	struct window_pane	*wp = ttyctx->arg;
 
-	if (c->session->curw == NULL || c->session->curw->window != wp->window)
+	if (c->session == NULL || c->session->curw == NULL ||
+	    c->session->curw->window != wp->window)
 		return (0);
 	if (wp->layout_cell == NULL)
 		return (0);
