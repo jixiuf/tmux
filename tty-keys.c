@@ -1151,8 +1151,8 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		return (-1);
 
 	/* Copy to the buffer. */
-	memcpy(tmp, buf + 2, end);
-	tmp[end-1] = '\0';
+	memcpy(tmp, buf + 2, end - 2);
+	tmp[end - 2] = '\0';
     final = buf[end];
 
 	/* Try to parse either form of key. */
@@ -1173,33 +1173,31 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
                 j=0;
                 subcp=next;
                 while ((subnext = strsep(&subcp, ":")) != NULL) {
-                    switch (j){
+                    switch (j++){
                     case 0:           /* unicode-key-code */
                         number = strtoul(subnext, NULL, 10);
-                        continue;
+                        break;
                     case 1:           /* shift key code */
                         shiftnum = strtoul(subnext, NULL, 10);
-                        continue;
+                        break;
                     case 2:           /* base-layout-key */
                         basenum = strtoul(subnext, NULL, 10);
-                        continue;
+                        break;
                     }
-                    j++;
                 }
 				continue;
             case 2:           /* modifier or modifier:eventtype */
                 j=0;
                 subcp=next;
                 while ((subnext = strsep(&subcp, ":")) != NULL) {
-                    switch (j){
+                    switch (j++){
                     case 0:           /* modifier */
                         modifiers = strtoul(subnext, NULL, 10);
-                        continue;
+                        break;
                     case 1:           /* eventtype code */
                         evtype = strtoul(subnext, NULL, 10);
-                        continue;
+                        break;
                     }
-                    j++;
                 }
 				continue;
 			case 3:           /* Text as code points */
@@ -1214,6 +1212,8 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 				}
             }
         }
+
+		*size = end + 1;
 
 		switch (evtype){
 		case 2:
@@ -1815,6 +1815,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	tmp[i] = '\0';
 	*size = 4 + i;
 
+	final = buf[3 + i];
 
     switch (final){
         case 'u':
@@ -1823,13 +1824,13 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 			  break;
           }
           tty_add_features(features, "kitkeys", ",");
+          tty_update_features(tty);
+          tty->flags |= TTY_HAVEDA_KITTY;
           /* kitty keys: push 1 entries */
 		  if (options_get_number(global_options, "kitty-keys")){
 			  tty_puts(tty, tty_term_string(tty->term, TTYC_ENKITK));
 			  tty_puts(tty, "\033[?u"); /* query flag again to update tty->kitty_state.*/
 		  }
-          tty_update_features(tty);
-          tty->flags |= TTY_HAVEDA_KITTY;
           break;
         case 'c':
           if (tty->flags & TTY_HAVEDA ){
@@ -1863,11 +1864,11 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 			  if (p[i] == 52)
 				  tty_add_features(features, "clipboard", ",");
             }
+            tty_update_features(tty);
+            tty->flags |= TTY_HAVEDA;
             break;
           }
           log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
-          tty_update_features(tty);
-          tty->flags |= TTY_HAVEDA;
       }
 
 	return (0);

@@ -2072,22 +2072,25 @@ input_csi_dispatch_sm_graphics(__unused struct input_ctx *ictx)
 		input_reply(ictx, 1, "\033[?%d;3;%dS", n, o);
 #endif
 }
-/* Handle CSI kitty keyboard protocol. :for query */
+/* Handle CSI kitty keyboard protocol: query */
 static void
 input_csi_dispatch_kitk_query(struct input_ctx *ictx)
 {
-	enum kitty_kbd_flags flags =
-		ictx->ctx.s->kitty_kbd.flags[ictx->ctx.s->kitty_kbd.idx];
-	input_reply(ictx,1, "\033[?%uu", flags);
-	log_debug("%s kitty kbd: query flags: %u ", __func__,flags);
+	/*
+	 * Respond with supported capabilities, not currently enabled flags.
+	 * This allows applications like fish to detect that kitty keyboard
+	 * protocol is available even when not yet enabled.
+	 */
+	input_reply(ictx, 1, "\033[?%uu", KITTY_KBD_SUPPORTED);
+	log_debug("%s kitty kbd: query supported flags: %u ", __func__, KITTY_KBD_SUPPORTED);
 }
 
-/* Handle CSI kitty keyboard protocol. :for push */
+/* Handle CSI kitty keyboard protocol: push */
 static void
 input_csi_dispatch_kitk_push(struct input_ctx *ictx)
 {
-	/* CSI > flags u  # for push, if flags omitted default to zero   */
-    uint8_t idx;
+	/* CSI > flags u  # for push, if flags omitted default to zero */
+	uint8_t idx;
 	int flags;
 	flags = input_get(ictx, 0, 0, 0) & KITTY_KBD_SUPPORTED;
 	idx = ictx->ctx.s->kitty_kbd.idx;
@@ -2101,47 +2104,98 @@ input_csi_dispatch_kitk_push(struct input_ctx *ictx)
 	ictx->ctx.s->kitty_kbd.flags[idx] = flags;
 	ictx->ctx.s->kitty_kbd.idx = idx;
 
-	log_debug("%s kitty kbd: pushed new flags: 0x%03x", __func__,flags);
+	log_debug("%s kitty kbd: pushed new flags: 0x%03x", __func__, flags);
 
+	/* If kitty-keys is enabled globally, forward the enable to the terminal */
+	if (flags != 0 && options_get_number(global_options, "kitty-keys")) {
+		struct window_pane *wp = ictx->wp;
+		struct window *w;
+		struct client *c;
+
+		if (wp == NULL)
+			return;
+		w = wp->window;
+		if (w == NULL)
+			return;
+
+		/* Find a client attached to this window */
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (c->session != NULL &&
+			    c->session->curw->window == w &&
+			    c->tty.term != NULL) {
+				char seq[16];
+				xsnprintf(seq, sizeof seq, "\033[>%du", flags);
+				tty_puts(&c->tty, seq);
+				tty_puts(&c->tty, "\033[?u");
+				break;
+			}
+		}
+	}
 }
 
-/* Handle CSI kitty keyboard protocol. :for push */
+/* Handle CSI kitty keyboard protocol: pop */
 static void
 input_csi_dispatch_kitk_pop(struct input_ctx *ictx)
 {
 	/* CSI < number u # to pop number entries, defaulting to 1 if unspecified */
-    uint8_t idx;
-	int i,count;
+	uint8_t idx;
+	int i, count;
 	count = input_get(ictx, 0, 1, 1);
-	log_debug("%s kitty kbd: popping %d levels of flags", __func__,count);
+	log_debug("%s kitty kbd: popping %d levels of flags", __func__, count);
 
-    idx = ictx->ctx.s->kitty_kbd.idx;
+	idx = ictx->ctx.s->kitty_kbd.idx;
 	for (i = 0; i < count; i++) {
 		/* Reset flags. This ensures we get flags=0 when
 		 * over-popping */
 		ictx->ctx.s->kitty_kbd.flags[idx] = 0;
 		if (idx == 0)
-			idx = nitems(ictx->ctx.s->kitty_kbd.flags) - 1;
-		else
-			idx--;
+			break;
+		idx--;
 	}
 	ictx->ctx.s->kitty_kbd.idx = idx;
 
 	log_debug("kitty kbd: flags after pop: 0x%03x",
-			  ictx->ctx.s->kitty_kbd.flags[idx]);
+	    ictx->ctx.s->kitty_kbd.flags[idx]);
+
+	/* Forward pop to outer terminal */
+	if (options_get_number(global_options, "kitty-keys")) {
+		struct window_pane *wp = ictx->wp;
+		struct window *w;
+		struct client *c;
+
+		if (wp == NULL)
+			return;
+		w = wp->window;
+		if (w == NULL)
+			return;
+
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (c->session != NULL &&
+			    c->session->curw->window == w &&
+			    c->tty.term != NULL) {
+				tty_puts(&c->tty, "\033[<u");
+				break;
+			}
+		}
+	}
 }
+
+/* Handle CSI kitty keyboard protocol: set */
 static void
 input_csi_dispatch_kitk_set(struct input_ctx *ictx)
 {
-    struct screen *s;
-    uint8_t idx;
-    int flag_set;
-    int mode;
+	struct screen *s;
+	uint8_t idx;
+	int flag_set;
+	int mode;
 	/* CSI = flags ; mode u */
-    flag_set = input_get(ictx, 0, 0, 0) & KITTY_KBD_SUPPORTED;
-	mode = input_get(ictx, 1,1, 1);
+	flag_set = input_get(ictx, 0, 0, 0) & KITTY_KBD_SUPPORTED;
+	mode = input_get(ictx, 1, 1, 1);
 	s = ictx->ctx.s;
 	idx = s->kitty_kbd.idx;
+
+	log_debug("%s: flag_set=%d mode=%d current_flags=%u", __func__,
+		flag_set, mode, s->kitty_kbd.flags[idx]);
 
 	switch (mode) {
 	case 1:
@@ -2160,7 +2214,33 @@ input_csi_dispatch_kitk_set(struct input_ctx *ictx)
 		break;
 	}
 	log_debug("%s kitty kbd: flags after update: 0x%03x",
-			  __func__,s->kitty_kbd.flags[idx]);
+	    __func__, s->kitty_kbd.flags[idx]);
+
+	/* Forward updated flags to outer terminal */
+	if (options_get_number(global_options, "kitty-keys")) {
+		struct window_pane *wp = ictx->wp;
+		struct window *w;
+		struct client *c;
+		enum kitty_kbd_flags new_flags = s->kitty_kbd.flags[idx];
+
+		if (wp == NULL)
+			return;
+		w = wp->window;
+		if (w == NULL)
+			return;
+
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (c->session != NULL &&
+			    c->session->curw->window == w &&
+			    c->tty.term != NULL) {
+				char seq[16];
+				xsnprintf(seq, sizeof seq, "\033[=%d;1u",
+				    new_flags);
+				tty_puts(&c->tty, seq);
+				break;
+			}
+		}
+	}
 }
 
 

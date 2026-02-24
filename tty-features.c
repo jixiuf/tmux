@@ -247,8 +247,8 @@ static const struct tty_feature tty_feature_extkeys = {
 	0
 };
 static const char *const tty_feature_kitty_capabilities[] = {
-	"Enkitk=\\E[>1;1u",
-	"DsKitk=\\E[>1;1u",
+	"Enkitk=\\E[>1u",
+	"Dskitk=\\E[<u",
 	NULL
 };
 static const struct tty_feature tty_feature_kitty = {
