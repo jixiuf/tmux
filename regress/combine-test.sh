@@ -3,7 +3,8 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
-[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+TESTDIR=$(cd -- "$(dirname "$0")" && pwd)
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f "$TESTDIR/../tmux")
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 
@@ -30,7 +31,7 @@ $TMUX capturep -pe >>$TMP"
 
 sleep 1
 
-cmp $TMP combine-test.result || exit 1
+cmp $TMP "$TESTDIR/combine-test.result" || exit 1
 
 $TMUX has 2>/dev/null && exit 1
 

@@ -3,12 +3,13 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
-[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+TESTDIR=$(cd -- "$(dirname "$0")" && pwd)
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f "$TESTDIR/../tmux")
 TMUX="$TEST_TMUX -f/dev/null -Ltest"
 $TMUX kill-server 2>/dev/null
 
 $TMUX new -d -x40 -y10 \
-      "cat copy-mode-test.txt; printf '\e[9;15H'; cat" || exit 1
+      "cat $TESTDIR/copy-mode-test.txt; printf '\e[9;15H'; cat" || exit 1
 $TMUX set -g window-size manual || exit 1
 
 # Enter copy mode and go to the first column of the first row.
