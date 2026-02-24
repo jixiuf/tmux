@@ -315,7 +315,10 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 	struct cmdq_state		*state;
 	enum cmd_parse_status		 status;
 	char				*error;
+	key_code			 mkey = event->key & ~KEYC_CAPS_LOCK;
 
+	if (event->key & KEYC_RELEASE)
+		return (0);
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (md->flags & MENU_NOMOUSE) {
 			if (MOUSE_BUTTONS(m->b) != MOUSE_BUTTON_1)
@@ -357,12 +360,12 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 		name = menu->items[i].name;
 		if (name == NULL || *name == '-')
 			continue;
-		if (event->key == menu->items[i].key) {
+		if (mkey == menu->items[i].key) {
 			md->choice = i;
 			goto chosen;
 		}
 	}
-	switch (event->key & ~KEYC_MASK_FLAGS) {
+	switch (event->key & ~(KEYC_MASK_FLAGS|KEYC_CAPS_LOCK)) {
 	case KEYC_BTAB:
 	case KEYC_UP:
 	case 'k':
