@@ -64,13 +64,13 @@ assert_key () {
 }
 
 # Meta+Tab should be CSI 9;3u — legacy produces ESC + Tab (^[^I)
-assert_key 'M-Tab' '^[[9;3u' xfail
+assert_key 'M-Tab' '^[[9;3u'
 
 # Meta+Enter should be CSI 13;3u — legacy produces ESC + CR (^[^M)
-assert_key 'M-Enter' '^[[13;3u' xfail
+assert_key 'M-Enter' '^[[13;3u'
 
 # Meta+BSpace should be CSI 127;3u — legacy produces ESC + DEL (^[^?)
-assert_key 'M-BSpace' '^[[127;3u' xfail
+assert_key 'M-BSpace' '^[[127;3u'
 
 # Ctrl+Tab should be CSI 9;5u
 assert_key 'C-Tab' '^[[9;5u'

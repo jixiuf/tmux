@@ -418,13 +418,15 @@ static void
 input_key_write(const char *from, struct bufferevent *bev, const char *data,
     size_t size)
 {
+	if (bev == NULL)
+		return;
 	log_debug("%s: %.*s", from, (int)size, data);
 	bufferevent_write(bev, data, size);
 }
 u_int
 get_modifier(key_code key)
 {
-	char modifier=0;
+	u_int modifier=0;
 	if (key & KEYC_SHIFT)
 		modifier |= 0x1;
 	if (key & KEYC_META)
@@ -447,7 +449,7 @@ get_modifier(key_code key)
 u_int
 get_legacy_modifier(key_code key)
 {
-	char modifier=0;
+	u_int modifier=0;
 	if (key & KEYC_SHIFT)
 		modifier |= 0x1;
 	if (key & (KEYC_META|KEYC_SUPER|
