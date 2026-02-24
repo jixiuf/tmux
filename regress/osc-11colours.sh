@@ -3,7 +3,8 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
-[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+TESTDIR=$(cd -- "$(dirname "$0")" && pwd)
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f "$TESTDIR/../tmux")
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 
@@ -51,8 +52,9 @@ for variant in grey gray; do
 	done
 done
 
-# All windows are created; wait once for escape sequences to be processed.
-sleep 2
+# All windows are created; wait for escape sequences to be processed.
+# 216 windows need time to start and process their printf commands.
+sleep 5
 
 # Now check all results.
 i=0
@@ -61,6 +63,11 @@ while [ "$i" -lt "$n" ]; do
 	eval "seq=\$test_seq_$i"
 	eval "expected=\$test_exp_$i"
 	c=$($TMUX display -t"$W" -p '#{pane_bg}')
+	# Retry once if empty -- window may still be starting.
+	if [ -z "$c" ] || [ "$c" = "default" ]; then
+		sleep 1
+		c=$($TMUX display -t"$W" -p '#{pane_bg}')
+	fi
 	if [ "$c" != "$expected" ]; then
 		echo "[FAIL] $seq -> expected $expected (Got: $c)"
 		exit_status=1

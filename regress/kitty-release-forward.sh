@@ -2,20 +2,21 @@
 
 # Test: kitty release events forwarded when flag 2 (report event types) active
 #
-# Bug: The u-terminated parser's modifier:eventtype sub-field loop has
-# j++ after a continue, so j never increments and the event type value
-# overwrites the modifier. Release events are never discarded because
-# evtype stays at default 1 (press). The ~ and letter terminated parsers
-# don't parse the event type at all.
+# Bug (fixed in T-002): The u-terminated parser's modifier:eventtype
+# sub-field loop had j++ after a continue, so j never incremented and
+# the event type value overwrote the modifier. Release events were
+# never discarded because evtype stayed at default 1 (press). The ~
+# and letter terminated parsers didn't parse the event type at all.
 #
-# Additionally, input_csi_dispatch_kitk_push() masks flags with
-# KITTY_KBD_SUPPORTED (=0x01) so flag 2 (report_event) is never stored.
+# The flag masking bug (T-004) that prevented flag 2 from being stored
+# has also been fixed.
 
 PATH=/bin:/usr/bin
 TERM=screen
 
-[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
-TMUX="$TEST_TMUX -Ltest"
+TESTDIR=$(cd -- "$(dirname "$0")" && pwd)
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f "$TESTDIR/../tmux")
+TMUX="$TEST_TMUX -Lkrel"
 $TMUX kill-server 2>/dev/null
 sleep 1
 
@@ -32,7 +33,7 @@ $TMUX set -g escape-time 0
 $TMUX set -g kitty-keys always
 
 # Create a pane running cat -v that pushes flag 3 (disambiguate | report_event).
-$TMUX respawn-window -k -t0:0 -- sh -c \
+$TMUX respawn-window -k -- sh -c \
 	'printf "\033[>3u"; stty raw -echo && cat -v'
 sleep 0.5
 
@@ -73,7 +74,7 @@ if pid == 0:
     os.dup2(slave, 2)
     os.close(slave)
     os.environ['TERM'] = 'xterm-256color'
-    os.execvp(tmux_bin, [tmux_bin, '-Ltest', 'attach'])
+    os.execvp(tmux_bin, [tmux_bin, '-Lkrel', 'attach'])
 else:
     os.close(slave)
 

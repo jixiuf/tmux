@@ -31,7 +31,7 @@ $TMUX -f/dev/null new -x40 -y10 -d -s target || exit 1
 sleep 0.3
 
 # Open a popup on the target session (runs sleep so the popup stays open).
-$TMUX display-popup -t target: -d /tmp -- sleep 5 &
+$TMUX display-popup -t target: -d /tmp -- sleep 5 2>/dev/null &
 POPUP_PID=$!
 sleep 0.3
 
@@ -42,7 +42,7 @@ sleep 0.5
 
 # If the server survived, keepalive session is still there.
 if $TMUX has -t keepalive 2>/dev/null; then
-	echo "PASS: server survived popup with curw=NULL"
+	[ -n "$VERBOSE" ] && echo "PASS: server survived popup with curw=NULL"
 else
 	echo "FAIL: server crashed (popup curw=NULL dereference)"
 	RC=1
@@ -77,7 +77,7 @@ $TMUX killw -t target2:0 2>/dev/null
 sleep 0.5
 
 if $TMUX has -t keepalive 2>/dev/null; then
-	echo "PASS: server survived menu with curw=NULL"
+	[ -n "$VERBOSE" ] && echo "PASS: server survived menu with curw=NULL"
 else
 	echo "FAIL: server crashed (menu curw=NULL dereference)"
 	RC=1

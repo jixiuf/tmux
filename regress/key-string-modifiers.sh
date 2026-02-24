@@ -8,7 +8,8 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
-[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+TESTDIR=$(cd -- "$(dirname "$0")" && pwd)
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f "$TESTDIR/../tmux")
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 sleep 1
@@ -63,6 +64,31 @@ assert_key () {
 assert_key 'Meta-a' '^[a'
 assert_key 'Alt-a' '^[a'
 assert_key 'Control-a' '^A'
+
+# Long-form Super- and Hyper- modifiers
+# In legacy mode, Super and Hyper are remapped to Meta
+assert_key 'Super-a' '^[a'
+assert_key 'Hyper-a' '^[a'
+
+# Short-form equivalents must also work
+assert_key 'M-a' '^[a'
+assert_key 'A-a' '^[a'
+assert_key 'C-a' '^A'
+assert_key 'H-a' '^[a'
+
+# "Control-" false positive: "ControXYa" should be rejected as unknown.
+# With the bug, strncasecmp only checks 6 chars ("Contro") so it
+# matches "Control-", advances 8 bytes, and parses "a" as C-a.
+result=$($TMUX bind-key 'ControXYa' send-keys hello 2>&1)
+if echo "$result" | grep -q "unknown key"; then
+	[ -n "$VERBOSE" ] && \
+		printf '%s[PASS]%s reject ControXYa -> unknown key\n' \
+		"$GREEN" "$RESET"
+else
+	printf '%s[FAIL]%s reject ControXYa -> should be unknown key (Got: %s)\n' \
+		"$RED" "$RESET" "$result"
+	exit_status=1
+fi
 
 $TMUX kill-server 2>/dev/null
 
