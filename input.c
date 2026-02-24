@@ -2076,13 +2076,13 @@ input_csi_dispatch_sm_graphics(__unused struct input_ctx *ictx)
 static void
 input_csi_dispatch_kitk_query(struct input_ctx *ictx)
 {
-	/*
-	 * Respond with supported capabilities, not currently enabled flags.
-	 * This allows applications like fish to detect that kitty keyboard
-	 * protocol is available even when not yet enabled.
-	 */
-	input_reply(ictx, 1, "\033[?%uu", KITTY_KBD_SUPPORTED);
-	log_debug("%s kitty kbd: query supported flags: %u ", __func__, KITTY_KBD_SUPPORTED);
+	struct screen		*s = ictx->ctx.s;
+	enum kitty_kbd_flags	 flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
+
+	/* Per the kitty keyboard protocol spec, CSI ? u reports the flags
+	 * currently in effect, not the supported-capabilities mask. */
+	input_reply(ictx, 1, "\033[?%uu", flags);
+	log_debug("%s kitty kbd: query active flags: %u", __func__, flags);
 }
 
 /* Handle CSI kitty keyboard protocol: push */
