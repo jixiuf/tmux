@@ -66,8 +66,11 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 	if (args_has(args, 'a') || before) {
 		if (target->wl != NULL)
 			idx = winlink_shuffle_up(dst_s, target->wl, before);
-		else
+		else {
+			if (dst_s->curw == NULL)
+				return (CMD_RETURN_ERROR);
 			idx = winlink_shuffle_up(dst_s, dst_s->curw, before);
+		}
 		if (idx == -1)
 			return (CMD_RETURN_ERROR);
 	}

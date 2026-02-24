@@ -130,7 +130,8 @@ server_client_set_overlay(struct client *c, u_int delay,
 		c->tty.flags |= TTY_FREEZE;
 	if (c->overlay_mode == NULL)
 		c->tty.flags |= TTY_NOCURSOR;
-	window_update_focus(c->session->curw->window);
+	if (c->session != NULL && c->session->curw != NULL)
+		window_update_focus(c->session->curw->window);
 	server_redraw_client(c);
 }
 
@@ -156,7 +157,7 @@ server_client_clear_overlay(struct client *c)
 	c->overlay_data = NULL;
 
 	c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
-	if (c->session != NULL)
+	if (c->session != NULL && c->session->curw != NULL)
 		window_update_focus(c->session->curw->window);
 	server_redraw_client(c);
 }
@@ -397,7 +398,8 @@ server_client_attached_lost(struct client *c)
 		found = NULL;
 		TAILQ_FOREACH(loop, &clients, entry) {
 			s = loop->session;
-			if (loop == c || s == NULL || s->curw->window != w)
+			if (loop == c || s == NULL || s->curw == NULL ||
+			    s->curw->window != w)
 				continue;
 			if (found == NULL || timercmp(&loop->activity_time,
 			    &found->activity_time, >))
@@ -423,7 +425,7 @@ server_client_set_session(struct client *c, struct session *s)
 
 	if (old != NULL && old->curw != NULL)
 		window_update_focus(old->curw->window);
-	if (s != NULL) {
+	if (s != NULL && s->curw != NULL) {
 		s->curw->window->latest = c;
 		recalculate_sizes();
 		window_update_focus(s->curw->window);
@@ -693,7 +695,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 {
 	struct mouse_event	*m = &event->m;
 	struct session		*s = c->session, *fs;
-	struct window		*w = s->curw->window;
+	struct window		*w;
 	struct winlink		*fwl;
 	struct window_pane	*wp, *fwp;
 	u_int			 x, y, b, sx, sy, px, py, sl_mpos = 0;
@@ -711,6 +713,10 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	       DOUBLE,
 	       TRIPLE } type = NOTYPE;
 	enum mouse_where where = NOWHERE;
+
+	if (s->curw == NULL)
+		return (KEYC_UNKNOWN);
+	w = s->curw->window;
 
 	log_debug("%s mouse %02x at %u,%u (last %u,%u) (%d)", c->name, m->b,
 	    m->x, m->y, m->lx, m->ly, c->tty.mouse_drag_flag);
@@ -2344,6 +2350,8 @@ server_client_update_latest(struct client *c)
 
 	if (c->session == NULL)
 		return;
+	if (c->session->curw == NULL)
+		return;
 	w = c->session->curw->window;
 
 	if (w->latest == c)
@@ -2404,12 +2412,14 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 		goto out;
 	wl = s->curw;
 
-	/* Update the activity timer. */
-	memcpy(&c->last_activity_time, &c->activity_time,
-	    sizeof c->last_activity_time);
-	if (gettimeofday(&c->activity_time, NULL) != 0)
-		fatal("gettimeofday failed");
-	session_update_activity(s, &c->activity_time);
+	/* Update the activity timer (skip for release events). */
+	if (~key & KEYC_RELEASE) {
+		memcpy(&c->last_activity_time, &c->activity_time,
+		    sizeof c->last_activity_time);
+		if (gettimeofday(&c->activity_time, NULL) != 0)
+			fatal("gettimeofday failed");
+		session_update_activity(s, &c->activity_time);
+	}
 
 	/* Check for mouse keys. */
 	m->valid = 0;
@@ -2447,6 +2457,10 @@ server_client_key_callback(struct cmdq_item *item, void *data)
 	if (server_client_is_bracket_paste (c, key))
 		goto paste_key;
 
+	/* Release events bypass key bindings — forward directly to pane. */
+	if (key & KEYC_RELEASE)
+		goto forward_key;
+
 	/* Treat everything as a regular key when pasting is detected. */
 	if (!KEYC_IS_MOUSE(key) &&
 	    key != KEYC_FOCUS_IN &&
@@ -2475,7 +2489,7 @@ table_changed:
 	 */
 	prefix = (key_code)options_get_number(s->options, "prefix");
 	prefix2 = (key_code)options_get_number(s->options, "prefix2");
-	key0 = (key & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS));
+	key0 = (key & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS)) & ~KEYC_CAPS_LOCK;
 	if ((key0 == (prefix & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS)) ||
 	    key0 == (prefix2 & (KEYC_MASK_KEY|KEYC_MASK_MODIFIERS))) &&
 	    strcmp(table->name, "prefix") != 0) {
@@ -2663,6 +2677,17 @@ server_client_handle_key(struct client *c, struct key_event *event)
 	if (event->key == KEYC_REPORT_DARK_THEME) {
 		server_client_report_theme(c, THEME_DARK);
 		return (0);
+	}
+
+	/*
+	 * Release events bypass overlays, prompts, and messages — queue
+	 * directly for the key callback where the release bypass forwards
+	 * them to the pane.
+	 */
+	if (event->key & KEYC_RELEASE) {
+		item = cmdq_get_callback(server_client_key_callback, event);
+		cmdq_append(c, item);
+		return (1);
 	}
 
 	/*
@@ -2969,6 +2994,8 @@ server_client_reset_state(struct client *c)
 	int			 mode = 0, cursor, flags;
 	u_int			 cx = 0, cy = 0, ox, oy, sx, sy, n;
 
+	if (wp == NULL)
+		return;
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 
@@ -3053,6 +3080,26 @@ server_client_reset_state(struct client *c)
 	/* Set the terminal mode and reset attributes. */
 	tty_update_mode(tty, mode, s);
 	tty_reset(tty);
+
+	/*
+	 * Update outer terminal kitty keyboard mode to match the active
+	 * pane's flags. Use CSI = flags ; 1 u (set/replace) to avoid
+	 * growing the outer terminal's stack.
+	 *
+	 * For "on" (==1), only sync to terminals known to support kitty
+	 * (TTY_HAVEDA_KITTY). For "always" (==2), sync unconditionally.
+	 */
+	if (s != NULL && options_get_number(global_options, "kitty-keys") &&
+	    (options_get_number(global_options, "kitty-keys") == 2 ||
+	    (tty->flags & TTY_HAVEDA_KITTY))) {
+		int new_kitty = s->kitty_kbd.flags[s->kitty_kbd.idx];
+		if (new_kitty != tty->kitty_state) {
+			char seq[32];
+			xsnprintf(seq, sizeof seq, "\033[=%du", new_kitty);
+			tty_puts(tty, seq);
+			tty->kitty_state = new_kitty;
+		}
+	}
 
 	/* All writing must be done, send a sync end (if it was started). */
 	tty_sync_end(tty);
@@ -3365,6 +3412,8 @@ server_client_set_path(struct client *c)
 
 	if (s->curw == NULL)
 		return;
+	if (s->curw->window->active == NULL)
+		return;
 	if (s->curw->window->active->base.path == NULL)
 		path = "";
 	else
@@ -3457,6 +3506,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 			fatal("gettimeofday failed");
 
 		tty_start_tty(&c->tty);
+		tty_send_requests(&c->tty);
 		server_redraw_client(c);
 		recalculate_sizes();
 
@@ -3918,6 +3968,8 @@ server_client_get_pane(struct client *c)
 	if (s == NULL)
 		return (NULL);
 
+	if (s->curw == NULL)
+		return (NULL);
 	if (~c->flags & CLIENT_ACTIVEPANE)
 		return (s->curw->window->active);
 	cw = server_client_get_client_window(c, s->curw->window->id);
@@ -3936,6 +3988,8 @@ server_client_set_pane(struct client *c, struct window_pane *wp)
 	if (s == NULL)
 		return;
 
+	if (s->curw == NULL)
+		return;
 	cw = server_client_add_client_window(c, s->curw->window->id);
 	cw->pane = wp;
 	log_debug("%s pane now %%%u", c->name, wp->id);

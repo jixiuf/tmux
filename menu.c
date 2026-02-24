@@ -206,18 +206,15 @@ menu_reapply_styles(struct menu_data *md, struct client *c)
 {
 	struct session		*s = c->session;
 	struct options		*o;
-	struct format_tree	*ft;
 	struct style		 sytmp;
 
-	if (s == NULL)
+	if (s == NULL || s->curw == NULL)
 		return;
 	o = s->curw->window->options;
 
-	ft = format_create_defaults(NULL, c, s, s->curw, NULL);
-
 	/* Reapply menu style from options. */
 	memcpy(&md->style_gc, &grid_default_cell, sizeof md->style_gc);
-	style_apply(&md->style_gc, o, "menu-style", ft);
+	style_apply(&md->style_gc, o, "menu-style", NULL);
 	if (md->style != NULL) {
 		style_set(&sytmp, &grid_default_cell);
 		if (style_parse(&sytmp, &md->style_gc, md->style) == 0) {
@@ -229,7 +226,7 @@ menu_reapply_styles(struct menu_data *md, struct client *c)
 	/* Reapply selected style from options. */
 	memcpy(&md->selected_style_gc, &grid_default_cell,
 	    sizeof md->selected_style_gc);
-	style_apply(&md->selected_style_gc, o, "menu-selected-style", ft);
+	style_apply(&md->selected_style_gc, o, "menu-selected-style", NULL);
 	if (md->selected_style != NULL) {
 		style_set(&sytmp, &grid_default_cell);
 		if (style_parse(&sytmp, &md->selected_style_gc,
@@ -242,7 +239,7 @@ menu_reapply_styles(struct menu_data *md, struct client *c)
 	/* Reapply border style from options. */
 	memcpy(&md->border_style_gc, &grid_default_cell,
 	    sizeof md->border_style_gc);
-	style_apply(&md->border_style_gc, o, "menu-border-style", ft);
+	style_apply(&md->border_style_gc, o, "menu-border-style", NULL);
 	if (md->border_style != NULL) {
 		style_set(&sytmp, &grid_default_cell);
 		if (style_parse(&sytmp, &md->border_style_gc,
@@ -251,8 +248,6 @@ menu_reapply_styles(struct menu_data *md, struct client *c)
 			md->border_style_gc.bg = sytmp.gc.bg;
 		}
 	}
-
-	format_free(ft);
 }
 
 void
@@ -320,7 +315,10 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 	struct cmdq_state		*state;
 	enum cmd_parse_status		 status;
 	char				*error;
+	key_code			 mkey = event->key & ~KEYC_CAPS_LOCK;
 
+	if (event->key & KEYC_RELEASE)
+		return (0);
 	if (KEYC_IS_MOUSE(event->key)) {
 		if (md->flags & MENU_NOMOUSE) {
 			if (MOUSE_BUTTONS(m->b) != MOUSE_BUTTON_1)
@@ -362,12 +360,12 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 		name = menu->items[i].name;
 		if (name == NULL || *name == '-')
 			continue;
-		if (event->key == menu->items[i].key) {
+		if (mkey == menu->items[i].key) {
 			md->choice = i;
 			goto chosen;
 		}
 	}
-	switch (event->key & ~KEYC_MASK_FLAGS) {
+	switch (event->key & ~(KEYC_MASK_FLAGS|KEYC_CAPS_LOCK)) {
 	case KEYC_BTAB:
 	case KEYC_UP:
 	case 'k':
@@ -550,7 +548,12 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 	struct menu_data	*md;
 	int			 choice;
 	const char		*name;
-	struct options		*o = c->session->curw->window->options;
+	struct options		*o;
+
+	if (c->session != NULL && c->session->curw != NULL)
+		o = c->session->curw->window->options;
+	else
+		o = global_w_options;
 
 	if (c->tty.sx < menu->width + 4 || c->tty.sy < menu->count + 2)
 		return (NULL);

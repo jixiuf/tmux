@@ -245,6 +245,8 @@ status_at_line(struct client *c)
 
 	if (c->flags & (CLIENT_STATUSOFF|CLIENT_CONTROL))
 		return (-1);
+	if (s == NULL)
+		return (-1);
 	if (s->statusat != 1)
 		return (s->statusat);
 	return (c->tty.sy - status_line_size(c));
@@ -272,6 +274,8 @@ status_prompt_line_at(struct client *c)
 
 	lines = status_line_size(c);
 	if (lines == 0)
+		return (0);
+	if (s == NULL)
 		return (0);
 	line = options_get_number(s->options, "message-line");
 	if (line >= lines)
@@ -395,6 +399,8 @@ status_redraw(struct client *c)
 	lines = status_line_size(c);
 	if (c->tty.sy == 0 || lines == 0)
 		return (1);
+	if (s == NULL)
+		return (1);
 
 	/* Create format tree. */
 	flags = FORMAT_STATUS;
@@ -502,8 +508,14 @@ status_message_set(struct client *c, int delay, int ignore_styles,
 	 * With delay -1, the display-time option is used; zero means wait for
 	 * key press; more than zero is the actual delay time in milliseconds.
 	 */
-	if (delay == -1)
-		delay = options_get_number(c->session->options, "display-time");
+	if (delay == -1) {
+		if (c->session != NULL)
+			delay = options_get_number(c->session->options,
+			    "display-time");
+		else
+			delay = options_get_number(global_s_options,
+			    "display-time");
+	}
 	if (delay > 0) {
 		tv.tv_sec = delay / 1000;
 		tv.tv_usec = (delay % 1000) * 1000L;
@@ -582,7 +594,8 @@ status_message_redraw(struct client *c)
 		len = c->tty.sx;
 
 	ft = format_create_defaults(NULL, c, NULL, NULL, NULL);
-	style_apply(&gc, s->options, "message-style", ft);
+	style_apply(&gc, s != NULL ? s->options : global_s_options,
+	    "message-style", ft);
 	format_free(ft);
 
 	screen_write_start(&ctx, sl->active);
@@ -786,6 +799,7 @@ status_prompt_redraw(struct client *c)
 	struct status_line	*sl = &c->status;
 	struct screen_write_ctx	 ctx;
 	struct session		*s = c->session;
+	struct options		*oo = s != NULL ? s->options : global_s_options;
 	struct screen		 old_screen;
 	u_int			 i, lines, offset, left, start, width, n;
 	u_int			 pcursor, pwidth, promptline;
@@ -802,12 +816,12 @@ status_prompt_redraw(struct client *c)
 		lines = 1;
 	screen_init(sl->active, c->tty.sx, lines, 0);
 
-	n = options_get_number(s->options, "prompt-cursor-colour");
+	n = options_get_number(oo, "prompt-cursor-colour");
 	sl->active->default_ccolour = n;
 	if (c->prompt_mode == PROMPT_COMMAND)
-		n = options_get_number(s->options, "prompt-command-cursor-style");
+		n = options_get_number(oo, "prompt-command-cursor-style");
 	else
-		n = options_get_number(s->options, "prompt-cursor-style");
+		n = options_get_number(oo, "prompt-cursor-style");
 	screen_set_cursor_style(n, &sl->active->default_cstyle,
 	    &sl->active->default_mode);
 
@@ -816,9 +830,9 @@ status_prompt_redraw(struct client *c)
 		promptline = lines - 1;
 
 	if (c->prompt_mode == PROMPT_COMMAND)
-		style_apply(&gc, s->options, "message-command-style", ft);
+		style_apply(&gc, oo, "message-command-style", ft);
 	else
-		style_apply(&gc, s->options, "message-style", ft);
+		style_apply(&gc, oo, "message-style", ft);
 
 	tmp = utf8_tocstr(c->prompt_buffer);
 	format_add(c->prompt_formats, "prompt-input", "%s", tmp);
@@ -1296,13 +1310,19 @@ status_prompt_backward_word(struct client *c, const char *separators)
 int
 status_prompt_key(struct client *c, key_code key)
 {
-	struct options		*oo = c->session->options;
+	struct options		*oo = c->session != NULL ?
+				    c->session->options : global_s_options;
 	char			*s, *cp, prefix = '=';
 	const char		*histstr, *separators = NULL, *keystring;
 	size_t			 size, idx;
 	struct utf8_data	 tmp;
 	int			 keys, word_is_separators;
 
+	if (key & KEYC_RELEASE)
+		return (0);
+
+	/* Strip CapsLock — not meaningful for key dispatch. */
+	key &= ~KEYC_CAPS_LOCK;
 	if (c->prompt_flags & PROMPT_KEY) {
 		keystring = key_string_lookup_key(key, 0);
 		c->prompt_inputcb(c, c->prompt_data, keystring, 1);
@@ -1335,7 +1355,7 @@ status_prompt_key(struct client *c, key_code key)
 		goto append_key;
 	}
 
-	keys = options_get_number(c->session->options, "status-keys");
+	keys = options_get_number(oo, "status-keys");
 	if (keys == MODEKEY_VI) {
 		switch (status_prompt_translate_key(c, key, &key)) {
 		case 1:
@@ -1859,7 +1879,8 @@ status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
 		menu_add_item(menu, &item, NULL, c, NULL);
 	}
 
-	if (options_get_number(c->session->options, "status-position") == 0)
+	if (c->session == NULL ||
+	    options_get_number(c->session->options, "status-position") == 0)
 		py = lines;
 	else
 		py = c->tty.sy - 3 - height;
@@ -1955,7 +1976,8 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 	spm->size = size;
 	spm->list = list;
 
-	if (options_get_number(c->session->options, "status-position") == 0)
+	if (c->session == NULL ||
+	    options_get_number(c->session->options, "status-position") == 0)
 		py = lines;
 	else
 		py = c->tty.sy - 3 - height;
@@ -2060,6 +2082,8 @@ status_prompt_complete(struct client *c, const char *word, u_int offset)
 
 	/* If this is a window completion, open the window menu. */
 	if (c->prompt_type == PROMPT_TYPE_WINDOW_TARGET) {
+		if (c->session == NULL)
+			goto found;
 		out = status_prompt_complete_window_menu(c, c->session, s,
 		    offset, '\0');
 		goto found;
@@ -2081,9 +2105,9 @@ status_prompt_complete(struct client *c, const char *word, u_int offset)
 			*strchr(copy, ':') = '\0';
 			session = session_find(copy);
 			free(copy);
-			if (session == NULL)
-				goto found;
 		}
+		if (session == NULL)
+			goto found;
 		out = status_prompt_complete_window_menu(c, session, colon + 1,
 		    offset, flag);
 		if (out == NULL)

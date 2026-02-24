@@ -76,6 +76,9 @@ control_notify_window_pane_changed(struct window *w)
 {
 	struct client	*c;
 
+	if (w->active == NULL)
+		return;
+
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
@@ -220,6 +223,9 @@ void
 control_notify_session_window_changed(struct session *s)
 {
 	struct client	*c;
+
+	if (s->curw == NULL)
+		return;
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))

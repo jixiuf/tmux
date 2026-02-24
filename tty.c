@@ -382,6 +382,20 @@ tty_start_tty(struct tty *tty)
 	tty->mouse_drag_flag = 0;
 	tty->mouse_drag_update = NULL;
 	tty->mouse_drag_release = NULL;
+
+	/*
+	 * If kitty-keys is "always", push kitty keyboard mode unconditionally
+	 * without waiting for a DA response. This forces kitty mode on
+	 * terminals that may not advertise support. Set TTY_HAVEDA_KITTY to
+	 * prevent the DA handler from pushing a second time on reconnect.
+	 */
+	if (options_get_number(global_options, "kitty-keys") == 2) {
+		if (tty_term_has(tty->term, TTYC_ENKITK)) {
+			tty_putcode(tty, TTYC_ENKITK);
+			tty_puts(tty, "\033[?u");
+			tty->flags |= TTY_HAVEDA_KITTY;
+		}
+	}
 }
 
 void
@@ -440,7 +454,8 @@ tty_stop_tty(struct tty *tty)
 
 	if (!(tty->flags & TTY_STARTED))
 		return;
-	tty->flags &= ~TTY_STARTED;
+	tty->flags &= ~(TTY_STARTED|TTY_ALL_REQUEST_FLAGS);
+	tty->kitty_state = 0;
 
 	evtimer_del(&tty->start_timer);
 	evtimer_del(&tty->clipboard_timer);
@@ -934,7 +949,11 @@ int
 tty_window_bigger(struct tty *tty)
 {
 	struct client	*c = tty->client;
-	struct window	*w = c->session->curw->window;
+	struct window	*w;
+
+	if (c->session == NULL || c->session->curw == NULL)
+		return (0);
+	w = c->session->curw->window;
 
 	return (tty->sx < w->sx || tty->sy - status_line_size(c) < w->sy);
 }
@@ -956,9 +975,25 @@ static int
 tty_window_offset1(struct tty *tty, u_int *ox, u_int *oy, u_int *sx, u_int *sy)
 {
 	struct client		*c = tty->client;
-	struct window		*w = c->session->curw->window;
+	struct window		*w;
 	struct window_pane	*wp = server_client_get_pane(c);
 	u_int			 cx, cy, lines;
+
+	if (wp == NULL) {
+		*ox = 0;
+		*oy = 0;
+		*sx = tty->sx;
+		*sy = tty->sy;
+		return (0);
+	}
+	if (c->session == NULL || c->session->curw == NULL) {
+		*ox = 0;
+		*oy = 0;
+		*sx = tty->sx;
+		*sy = tty->sy;
+		return (0);
+	}
+	w = c->session->curw->window;
 
 	lines = status_line_size(c);
 
@@ -1454,7 +1489,8 @@ tty_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 {
 	struct window_pane	*wp = ttyctx->arg;
 
-	if (c->session->curw->window != wp->window)
+	if (c->session == NULL || c->session->curw == NULL ||
+	    c->session->curw->window != wp->window)
 		return (0);
 	if (wp->layout_cell == NULL)
 		return (0);

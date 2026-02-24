@@ -330,6 +330,8 @@ cmd_find_get_window(struct cmd_find_state *fs, const char *window, int only)
 
 	/* Otherwise try as a session itself. */
 	if (!only && cmd_find_get_session(fs, window) == 0) {
+		if (fs->s->curw == NULL)
+			return (-1);
 		fs->wl = fs->s->curw;
 		fs->w = fs->wl->window;
 		if (~fs->flags & CMD_FIND_WINDOW_INDEX)
@@ -359,6 +361,8 @@ cmd_find_get_window_with_session(struct cmd_find_state *fs, const char *window)
 	 * Start with the current window as the default. So if only an index is
 	 * found, the window will be the current.
 	 */
+	if (fs->s->curw == NULL)
+		return (-1);
 	fs->wl = fs->s->curw;
 	fs->w = fs->wl->window;
 
@@ -548,6 +552,8 @@ cmd_find_get_pane_with_session(struct cmd_find_state *fs, const char *pane)
 	}
 
 	/* Otherwise use the current window. */
+	if (fs->s->curw == NULL)
+		return (-1);
 	fs->wl = fs->s->curw;
 	fs->idx = fs->wl->idx;
 	fs->w = fs->wl->window;
@@ -725,6 +731,8 @@ cmd_find_from_session(struct cmd_find_state *fs, struct session *s, int flags)
 	cmd_find_clear_state(fs, flags);
 
 	fs->s = s;
+	if (fs->s->curw == NULL)
+		return;
 	fs->wl = fs->s->curw;
 	fs->w = fs->wl->window;
 	fs->wp = fs->w->active;
@@ -825,6 +833,10 @@ cmd_find_from_nothing(struct cmd_find_state *fs, int flags)
 		cmd_find_clear_state(fs, flags);
 		return (-1);
 	}
+	if (fs->s->curw == NULL) {
+		cmd_find_clear_state(fs, flags);
+		return (-1);
+	}
 	fs->wl = fs->s->curw;
 	fs->idx = fs->wl->idx;
 	fs->w = fs->wl->window;
@@ -871,9 +883,13 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 		fs->wp = server_client_get_pane(c);
 		if (fs->wp == NULL) {
 			cmd_find_from_session(fs, c->session, flags);
+			if (fs->wl == NULL)
+				return (-1);
 			return (0);
 		}
 		fs->s = c->session;
+		if (fs->s->curw == NULL)
+			return (-1);
 		fs->wl = fs->s->curw;
 		fs->w = fs->wl->window;
 
@@ -903,6 +919,8 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 		 */
 		goto unknown_pane;
 	}
+	if (fs->s->curw == NULL)
+		return (-1);
 	fs->wl = fs->s->curw;
 	fs->w = fs->wl->window;
 	fs->wp = fs->w->active; /* use active pane */
@@ -999,6 +1017,8 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 			cmdq_error(item, "no current client");
 			goto error;
 		}
+		if (c->session == NULL || c->session->curw == NULL)
+			goto error;
 		fs->wl = c->session->curw;
 		fs->wp = c->session->curw->window->active;
 		fs->w = c->session->curw->window;
@@ -1148,6 +1168,8 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 
 		/* If window and pane are NULL, use that session's current. */
 		if (window == NULL && pane == NULL) {
+			if (fs->s->curw == NULL)
+				goto error;
 			fs->wl = fs->s->curw;
 			fs->idx = -1;
 			fs->w = fs->wl->window;

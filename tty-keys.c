@@ -75,7 +75,7 @@ struct tty_key {
 	struct tty_key	*next;
 };
 
-/* kitty : CSI 1; modifier [~ABCDEFHPQS] */
+/* kitty : CSI 1; modifier [~ABCDEFHPQRS] */
 static const key_code kitty_ascii_keys[] ={
     KEYC_UP,                    /* A */
     KEYC_DOWN,                   /* B */
@@ -88,7 +88,7 @@ static const key_code kitty_ascii_keys[] ={
     0,0,0,0,0,0,0,
     KEYC_F1,                 /* P */
     KEYC_F2,                    /* Q */
-    0,
+    KEYC_F3,                    /* R */
     KEYC_F4/* S  */
 };
 /* Default raw keys. */
@@ -1017,12 +1017,14 @@ complete_key:
 	/* Check for focus events. */
 	if (key == KEYC_FOCUS_OUT) {
 		c->flags &= ~CLIENT_FOCUSED;
-		window_update_focus(c->session->curw->window);
+		if (c->session != NULL && c->session->curw != NULL)
+			window_update_focus(c->session->curw->window);
 		notify_client("client-focus-out", c);
 	} else if (key == KEYC_FOCUS_IN) {
 		c->flags |= CLIENT_FOCUSED;
 		notify_client("client-focus-in", c);
-		window_update_focus(c->session->curw->window);
+		if (c->session != NULL && c->session->curw != NULL)
+			window_update_focus(c->session->curw->window);
 	}
 
 	/* Fire the key. */
@@ -1076,8 +1078,11 @@ set_modifier(key_code key ,u_int modifiers)
 		 * which is unfortunate, as in general case determining if a
 		 * character is shifted or not requires knowing the input
 		 * keyboard layout. So we only fix up the trivial case.
+		 * However, if Caps Lock is explicitly present, don't infer
+		 * Shift from uppercase — the uppercase is from Caps Lock.
 		 */
-		if (modifiers & 0x1 || (key >= 'A' && key <= 'Z'))
+		if (modifiers & 0x1 ||
+		    ((key >= 'A' && key <= 'Z') && !(modifiers & 0x40)))
 			key |= KEYC_SHIFT;
 		if (modifiers & 0x2)
 			key |= (KEYC_META|KEYC_IMPLIED_META); /* Alt */
@@ -1114,6 +1119,8 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 	char	final, *cp, *next, *subnext, *subcp, tmp[64];
 	cc_t		 bspace;
 	key_code	 nkey;
+	struct utf8_data ud;
+	utf8_char	 uc;
 
 	*size = txt[0] = number = shiftnum = basenum = evtype = 0;
 	/* modifiers: 1:no modifiers */
@@ -1132,12 +1139,12 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 
 	/*
 	 * Look for a terminator. Stop at either 'u' '~' or
-     * one of ABCDEFHPQS
+     * one of ABCDEFHPQRS
 	 */
 	for (end = 2; end < len && end != sizeof tmp; end++) {
         final = buf[end];
 		if (buf[end] == 'u' ||buf[end] == '~'||
-            /* ABCDEFHPQS */
+            /* ABCDEFHPQRS */
             (final>='A' && final <= 'S' && kitty_ascii_keys[final - 'A']))
 			break;
 	}
@@ -1145,14 +1152,14 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		return (1);
 	if (end == sizeof tmp || (buf[end] != '~' &&
 							  buf[end] != 'u' &&
-                              /* ABCDEFHPQS */
+                              /* ABCDEFHPQRS */
                               !(final>='A' && final <= 'S' &&
                                 kitty_ascii_keys[final - 'A'])))
 		return (-1);
 
 	/* Copy to the buffer. */
-	memcpy(tmp, buf + 2, end);
-	tmp[end-1] = '\0';
+	memcpy(tmp, buf + 2, end - 2);
+	tmp[end - 2] = '\0';
     final = buf[end];
 
 	/* Try to parse either form of key. */
@@ -1173,33 +1180,31 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
                 j=0;
                 subcp=next;
                 while ((subnext = strsep(&subcp, ":")) != NULL) {
-                    switch (j){
+                    switch (j++){
                     case 0:           /* unicode-key-code */
                         number = strtoul(subnext, NULL, 10);
-                        continue;
+                        break;
                     case 1:           /* shift key code */
                         shiftnum = strtoul(subnext, NULL, 10);
-                        continue;
+                        break;
                     case 2:           /* base-layout-key */
                         basenum = strtoul(subnext, NULL, 10);
-                        continue;
+                        break;
                     }
-                    j++;
                 }
 				continue;
             case 2:           /* modifier or modifier:eventtype */
                 j=0;
                 subcp=next;
                 while ((subnext = strsep(&subcp, ":")) != NULL) {
-                    switch (j){
+                    switch (j++){
                     case 0:           /* modifier */
                         modifiers = strtoul(subnext, NULL, 10);
-                        continue;
+                        break;
                     case 1:           /* eventtype code */
                         evtype = strtoul(subnext, NULL, 10);
-                        continue;
+                        break;
                     }
-                    j++;
                 }
 				continue;
 			case 3:           /* Text as code points */
@@ -1215,12 +1220,14 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
             }
         }
 
+		*size = end + 1;
+
 		switch (evtype){
 		case 2:
 			evtype = 1;			/* repeat as press */
 			break;
-		case 3:					/* TODO: handle release event */
-			return -2;			/* discard key of release now */
+		case 3:
+			break;			/* release: propagate */
 		}
 
 		/*  TODO: don't known how to handle
@@ -1289,6 +1296,7 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		case 57424: number = KEYC_KP_END; break;
 		case 57425: number = KEYC_KP_INSERT; break;
 		case 57426: number = KEYC_KP_DELETE; break;
+		case 57427: number = KEYC_KP_BEGIN; break;
         case 57428: number = KEYC_MEDIA_PLAY; break;
         case 57429: number = KEYC_MEDIA_PAUSE; break;
         case 57430: number = KEYC_MEDIA_PLAY_PAUSE; break;
@@ -1319,9 +1327,15 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		}
 		break;
 	case '~':
-		if (sscanf(tmp, "%u;%u~", &number, &modifiers) != 2)
-			if (sscanf(tmp, "%u~",  &number) != 1)
+		if (sscanf(tmp, "%u;%u", &number, &modifiers) != 2) {
+			if (sscanf(tmp, "%u",  &number) != 1)
 				return (-1);
+		} else {
+			/* Parse event type from modifiers:evtype if present. */
+			cp = strchr(tmp, ';');
+			if (cp != NULL && (cp = strchr(cp, ':')) != NULL)
+				evtype = strtoul(cp + 1, NULL, 10);
+		}
 		switch (number){
 		case 2:				number=KEYC_IC; break;
 		case 3:				number=KEYC_DC; break;
@@ -1346,7 +1360,7 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 			return (-1);
 		}
 		break;
-	case 'A':					/* CSI 1; modifiers [ABCDEFHPQS] */
+	case 'A':					/* CSI 1; modifiers [ABCDEFHPQRS] */
 	case 'B':
 	case 'C':
 	case 'D':
@@ -1355,6 +1369,7 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 	case 'H':
 	case 'P':
 	case 'Q':
+	case 'R':
 	case 'S':
 			number=kitty_ascii_keys[final - 'A'];
 		/* if no modifiers are present the parameters are omitted entirely
@@ -1362,6 +1377,10 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		if(end>2){ 			/* has modifiers: CSI 1; modifiers [ABCDEFHPQS]  */
 			if (sscanf(tmp ,"1;%u",  &modifiers) != 1)
 				return (-1);
+			/* Parse event type from modifiers:evtype if present. */
+			cp = strchr(tmp, ';');
+			if (cp != NULL && (cp = strchr(cp, ':')) != NULL)
+				evtype = strtoul(cp + 1, NULL, 10);
 		}
 		break;
 	default:
@@ -1378,13 +1397,31 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 	else
 		nkey = number;
 
+	/* Convert UTF-32 codepoint into internal representation. */
+	if (KEYC_IS_UNICODE(nkey)) {
+		if (utf8_fromwc(nkey, &ud) == UTF8_DONE &&
+		    utf8_from_data(&ud, &uc) == UTF8_DONE)
+			nkey = uc;
+		else
+			return (-1);
+	}
+
 	/* Update the modifiers. */
 	nkey=set_modifier(nkey,modifiers);
+
+	/* Convert S-Tab into Backtab (matches tty_keys_extended_key). */
+	if ((nkey & KEYC_MASK_KEY) == '\011' && (nkey & KEYC_SHIFT))
+		nkey = KEYC_BTAB | (nkey & ~KEYC_MASK_KEY & ~KEYC_SHIFT);
+
+	/* Tag release events so the dispatch can forward them. */
+	if (evtype == 3)
+		nkey |= KEYC_RELEASE;
 
 	if (log_get_level() != 0) {
 		log_debug("%s: kitty key %.*s is %llx (%s)", c->name,
 				  (int)*size, buf, nkey, key_string_lookup_key(nkey, 1));
 	}
+
 	*key = nkey;
 	return (0);
 }
@@ -1456,7 +1493,7 @@ tty_keys_extended_key(struct tty *tty, const char *buf, size_t len,
 		nkey = number;
 
 	/* Convert UTF-32 codepoint into internal representation. */
-	if (nkey != KEYC_BSPACE && nkey & ~0x7f) {
+	if (KEYC_IS_UNICODE(nkey)) {
 		if (utf8_fromwc(nkey, &ud) == UTF8_DONE &&
 		    utf8_from_data(&ud, &uc) == UTF8_DONE)
 			nkey = uc;
@@ -1814,6 +1851,7 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	tmp[i] = '\0';
 	*size = 4 + i;
 
+	final = buf[3 + i];
 
     switch (final){
         case 'u':
@@ -1822,13 +1860,13 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 			  break;
           }
           tty_add_features(features, "kitkeys", ",");
+          tty_update_features(tty);
+          tty->flags |= TTY_HAVEDA_KITTY;
           /* kitty keys: push 1 entries */
 		  if (options_get_number(global_options, "kitty-keys")){
 			  tty_puts(tty, tty_term_string(tty->term, TTYC_ENKITK));
 			  tty_puts(tty, "\033[?u"); /* query flag again to update tty->kitty_state.*/
 		  }
-          tty_update_features(tty);
-          tty->flags |= TTY_HAVEDA_KITTY;
           break;
         case 'c':
           if (tty->flags & TTY_HAVEDA ){
@@ -1862,11 +1900,11 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 			  if (p[i] == 52)
 				  tty_add_features(features, "clipboard", ",");
             }
+            tty_update_features(tty);
+            tty->flags |= TTY_HAVEDA;
             break;
           }
           log_debug("%s: received primary DA %.*s", c->name, (int)*size, buf);
-          tty_update_features(tty);
-          tty->flags |= TTY_HAVEDA;
       }
 
 	return (0);

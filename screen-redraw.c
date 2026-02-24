@@ -354,6 +354,8 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 
 	if (pane_status != PANE_STATUS_OFF) {
 		active = wp = server_client_get_pane(c);
+		if (wp == NULL)
+			return (CELL_OUTSIDE);
 		do {
 			if (!window_pane_visible(wp))
 				goto next1;
@@ -375,6 +377,8 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 	}
 
 	active = wp = server_client_get_pane(c);
+	if (wp == NULL)
+		return (CELL_OUTSIDE);
 	do {
 		if (!window_pane_visible(wp))
 			goto next2;
@@ -574,10 +578,14 @@ static uint64_t
 screen_redraw_update(struct screen_redraw_ctx *ctx, uint64_t flags)
 {
 	struct client			*c = ctx->c;
-	struct window			*w = c->session->curw->window;
+	struct window			*w;
 	struct window_pane		*wp;
 	int				 redraw;
 	enum pane_lines			 lines;
+
+	if (c == NULL)
+		return (flags);
+	w = c->session->curw->window;
 
 	if (c->message_string != NULL)
 		redraw = status_message_redraw(c);
@@ -610,10 +618,18 @@ static void
 screen_redraw_set_context(struct client *c, struct screen_redraw_ctx *ctx)
 {
 	struct session	*s = c->session;
-	struct options	*oo = s->options;
-	struct window	*w = s->curw->window;
-	struct options	*wo = w->options;
+	struct options	*oo;
+	struct window	*w;
+	struct options	*wo;
 	u_int		 lines;
+
+	if (s == NULL || s->curw == NULL) {
+		memset(ctx, 0, sizeof *ctx);
+		return;
+	}
+	oo = s->options;
+	w = s->curw->window;
+	wo = w->options;
 
 	memset(ctx, 0, sizeof *ctx);
 	ctx->c = c;
@@ -650,6 +666,8 @@ screen_redraw_screen(struct client *c)
 		return;
 
 	screen_redraw_set_context(c, &ctx);
+	if (ctx.c == NULL)
+		return;
 
 	flags = screen_redraw_update(&ctx, c->flags);
 	if ((flags & CLIENT_ALLREDRAWFLAGS) == 0)
@@ -694,6 +712,8 @@ screen_redraw_pane(struct client *c, struct window_pane *wp,
 		return;
 
 	screen_redraw_set_context(c, &ctx);
+	if (ctx.c == NULL)
+		return;
 	tty_sync_start(&c->tty);
 	tty_update_mode(&c->tty, c->tty.mode, NULL);
 
@@ -718,6 +738,8 @@ screen_redraw_draw_borders_style(struct screen_redraw_ctx *ctx, u_int x,
 	struct options		*oo = w->options;
 	struct format_tree	*ft;
 
+	if (active == NULL)
+		return (NULL);
 	if (wp->border_gc_set)
 		return (&wp->border_gc);
 	wp->border_gc_set = 1;
@@ -822,6 +844,8 @@ screen_redraw_draw_borders_cell(struct screen_redraw_ctx *ctx, u_int i, u_int j)
 	int			 isolates;
 	struct visible_ranges	*r;
 
+	if (active == NULL)
+		return;
 	if (c->overlay_check != NULL) {
 		r = c->overlay_check(c, c->overlay_data, x, y, 1);
 		if (server_client_ranges_is_empty(r))

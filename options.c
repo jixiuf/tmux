@@ -1252,6 +1252,44 @@ options_push_changes(const char *name)
 		utf8_update_width_cache();
 	if (strcmp(name, "input-buffer-size") == 0)
 		input_set_buffer_size(options_get_number(global_options, name));
+	if (strcmp(name, "kitty-keys") == 0) {
+		int kkeys = options_get_number(global_options, "kitty-keys");
+		int want;
+		TAILQ_FOREACH(loop, &clients, entry) {
+			if (!(loop->tty.flags & TTY_OPENED))
+				continue;
+			/*
+			 * Determine whether this terminal should have kitty
+			 * mode active under the new setting:
+			 * - "always" (==2): all terminals
+			 * - "on" (==1): only terminals with TTY_HAVEDA_KITTY
+			 * - "off" (==0): no terminals
+			 *
+			 * Then push or pop as needed, avoiding double-pushes
+			 * (e.g., switching between "on" and "always") and
+			 * ensuring stale pushes are cleaned up (e.g., "always"
+			 * to "on" must pop non-kitty terminals).
+			 */
+			want = (kkeys == 2) ||
+			    (kkeys == 1 &&
+			    (loop->tty.flags & TTY_HAVEDA_KITTY));
+			if (want && loop->tty.kitty_state == 0) {
+				if (tty_term_has(loop->tty.term,
+				    TTYC_ENKITK)) {
+					tty_puts(&loop->tty,
+					    tty_term_string(loop->tty.term,
+					    TTYC_ENKITK));
+					tty_puts(&loop->tty, "\033[?u");
+					loop->tty.flags |= TTY_HAVEDA_KITTY;
+				}
+			} else if (!want && loop->tty.kitty_state > 0) {
+					tty_puts(&loop->tty,
+				    tty_term_string(loop->tty.term,
+				    TTYC_DSKITK));
+				loop->tty.kitty_state = 0;
+			}
+		}
+	}
 	if (strcmp(name, "history-limit") == 0) {
 		RB_FOREACH(s, sessions, &sessions)
 			session_update_history(s);

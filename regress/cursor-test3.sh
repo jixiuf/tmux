@@ -3,7 +3,8 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
-[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+TESTDIR=$(cd -- "$(dirname "$0")" && pwd)
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f "$TESTDIR/../tmux")
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 
@@ -23,7 +24,7 @@ $TMUX resizew -x7 || exit 1
 $TMUX display -pF '#{cursor_x} #{cursor_y} #{cursor_character}' >>$TMP
 $TMUX capturep -p|awk '{print NR-1,$0}' >>$TMP
 
-cmp -s $TMP cursor-test3.result || exit 1
+cmp -s $TMP "$TESTDIR/cursor-test3.result" || exit 1
 
 $TMUX kill-server 2>/dev/null
 exit 0

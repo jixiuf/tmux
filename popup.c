@@ -112,7 +112,7 @@ popup_reapply_styles(struct popup_data *pd)
 	struct format_tree	*ft;
 	struct style		 sytmp;
 
-	if (s == NULL)
+	if (s == NULL || s->curw == NULL)
 		return;
 	o = s->curw->window->options;
 
@@ -403,11 +403,18 @@ popup_make_pane(struct popup_data *pd, enum layout_type type)
 {
 	struct client		*c = pd->c;
 	struct session		*s = c->session;
-	struct window		*w = s->curw->window;
+	struct window		*w;
 	struct layout_cell	*lc;
-	struct window_pane	*wp = w->active, *new_wp;
+	struct window_pane	*wp, *new_wp;
 	u_int			 hlimit;
 	const char		*shell;
+
+	if (s == NULL || s->curw == NULL)
+		return;
+	w = s->curw->window;
+	wp = w->active;
+	if (wp == NULL)
+		return;
 
 	window_unzoom(w, 1);
 
@@ -555,6 +562,7 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 	size_t			 len;
 	u_int			 px, py, x;
 	enum { NONE, LEFT, RIGHT, TOP, BOTTOM } border = NONE;
+	key_code		 pkey = event->key & ~KEYC_CAPS_LOCK;
 
 	if (pd->md != NULL) {
 		if (menu_key_cb(c, pd->md, event) == 1) {
@@ -610,10 +618,11 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 	}
 	if ((((pd->flags & (POPUP_CLOSEEXIT|POPUP_CLOSEEXITZERO)) == 0) ||
 	    pd->job == NULL) &&
-	    (event->key == '\033' || event->key == ('c'|KEYC_CTRL)))
+	    (pkey == '\033' || pkey == ('c'|KEYC_CTRL)))
 		return (1);
 	if (pd->job == NULL && (pd->flags & POPUP_CLOSEANYKEY) &&
-	    !KEYC_IS_MOUSE(event->key) && !KEYC_IS_PASTE(event->key))
+	    !KEYC_IS_MOUSE(event->key) && !KEYC_IS_PASTE(event->key) &&
+	    !(event->key & KEYC_RELEASE))
 		return (1);
 	if (pd->job != NULL) {
 		if (KEYC_IS_MOUSE(event->key)) {
@@ -770,10 +779,12 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	struct options		*o;
 	struct style		 sytmp;
 
-	if (s != NULL)
+	if (s != NULL && s->curw != NULL)
 		o = s->curw->window->options;
-	else
+	else if (c->session != NULL && c->session->curw != NULL)
 		o = c->session->curw->window->options;
+	else
+		o = global_w_options;
 
 	if (lines == BOX_LINES_DEFAULT)
 		lines = options_get_number(o, "popup-border-lines");

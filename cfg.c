@@ -262,9 +262,11 @@ cfg_show_causes(struct session *s)
 		else
 			s = RB_MIN(sessions, &sessions);
 	}
-	if (s == NULL || s->attached == 0) /* wait for an attached session */
+	if (s == NULL || s->curw == NULL || s->attached == 0) /* wait for an attached session */
 		return;
 	wp = s->curw->window->active;
+	if (wp == NULL)
+		return;
 
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode != &window_view_mode)

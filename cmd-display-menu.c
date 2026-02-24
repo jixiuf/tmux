@@ -297,9 +297,12 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 	char			*title, *cause = NULL;
 	int			 flags = 0, starting_choice = 0;
 	u_int			 px, py, i, count = args_count(args);
-	struct options		*o = target->s->curw->window->options;
+	struct options		*o;
 	struct options_entry	*oe;
 
+	if (target->s->curw == NULL)
+		return (CMD_RETURN_NORMAL);
+	o = target->s->curw->window->options;
 
 	if (tc->overlay_draw != NULL)
 		return (CMD_RETURN_NORMAL);
@@ -402,8 +405,12 @@ cmd_display_popup_exec(struct cmd *self, struct cmdq_item *item)
 	u_int			 px, py, w, h, count = args_count(args);
 	struct args_value	*av;
 	struct environ		*env = NULL;
-	struct options		*o = s->curw->window->options;
+	struct options		*o;
 	struct options_entry	*oe;
+
+	if (s->curw == NULL)
+		return (CMD_RETURN_NORMAL);
+	o = s->curw->window->options;
 
 	if (args_has(args, 'C')) {
 		server_client_clear_overlay(tc);

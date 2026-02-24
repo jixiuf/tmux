@@ -3,7 +3,8 @@
 PATH=/bin:/usr/bin
 TERM=screen
 
-[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f ../tmux)
+TESTDIR=$(cd -- "$(dirname "$0")" && pwd)
+[ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f "$TESTDIR/../tmux")
 TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
 TMUX2="$TEST_TMUX -Ltest2"
@@ -17,6 +18,9 @@ $TMUX -f/dev/null new -d "$TMUX2 attach" || exit 1
 sleep 1
 
 exit_status=0
+RED=$(printf '\033[31m')
+GREEN=$(printf '\033[32m')
+RESET=$(printf '\033[0m')
 
 format_string () {
 	case $1 in
@@ -35,7 +39,7 @@ assert_key () {
 	format_string=$(format_string "$expected_name")
 
 	$TMUX2 command-prompt -k 'display-message -pl '"$format_string" > "$TMP" &
-	sleep 0.05
+	sleep 0.03
 
 	$TMUX send-keys $keys
 
@@ -46,10 +50,10 @@ assert_key () {
 
 	if [ "$actual_name" = "$expected_name" ]; then
 		if [ -n "$VERBOSE" ]; then
-			echo "[PASS] $keys -> $actual_name"
+			printf '%sPASS%s %s -> %s\n' "$GREEN" "$RESET" "$keys" "$actual_name"
 		fi
 	else
-		echo "[FAIL] $keys -> $expected_name (Got: '$actual_name')"
+		printf '%sFAIL%s %s -> %s (Got: %s)\n' "$RED" "$RESET" "$keys" "$expected_name" "$actual_name"
 		exit_status=1
 	fi
 

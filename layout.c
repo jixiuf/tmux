@@ -368,9 +368,13 @@ layout_resize_check(struct window *w, struct layout_cell *lc,
     enum layout_type type)
 {
 	struct layout_cell	*lcchild;
-	struct style		*sb_style = &w->active->scrollbar_style;
+	struct style		*sb_style;
 	u_int			 available, minimum;
 	int			 status, scrollbars;
+
+	if (w->active == NULL)
+		return (0);
+	sb_style = &w->active->scrollbar_style;
 
 	status = options_get_number(w->options, "pane-border-status");
 	scrollbars = options_get_number(w->options, "pane-scrollbars");

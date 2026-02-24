@@ -137,6 +137,9 @@ screen_reinit(struct screen *s)
 	memset(s->saved_kitty_kbd.flags, 0, sizeof(s->saved_kitty_kbd.flags));
 	s->kitty_kbd.idx = 0;
 	s->saved_kitty_kbd.idx = 0;
+
+	if (options_get_number(global_options, "kitty-keys") == 2)
+		s->kitty_kbd.flags[0] = KITTY_KBD_DISAMBIGUATE;
 }
 
 /* Reset hyperlinks of a screen. */

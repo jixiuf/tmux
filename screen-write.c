@@ -139,7 +139,7 @@ screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 		return (0);
 	}
 
-	if (c->session->curw->window != wp->window)
+	if (c->session->curw == NULL || c->session->curw->window != wp->window)
 		return (0);
 	if (wp->layout_cell == NULL)
 		return (0);
@@ -331,6 +331,11 @@ screen_write_reset(struct screen_write_ctx *ctx)
 
 	if (options_get_number(global_options, "extended-keys") == 2)
 		s->mode = (s->mode & ~EXTENDED_KEY_MODES)|MODE_KEYS_EXTENDED;
+
+	memset(s->kitty_kbd.flags, 0, sizeof(s->kitty_kbd.flags));
+	s->kitty_kbd.idx = 0;
+	if (options_get_number(global_options, "kitty-keys") == 2)
+		s->kitty_kbd.flags[0] = KITTY_KBD_DISAMBIGUATE;
 
 	screen_write_clearscreen(ctx, 8);
 	screen_write_set_cursor(ctx, 0, 0);
