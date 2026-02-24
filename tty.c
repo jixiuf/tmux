@@ -382,6 +382,20 @@ tty_start_tty(struct tty *tty)
 	tty->mouse_drag_flag = 0;
 	tty->mouse_drag_update = NULL;
 	tty->mouse_drag_release = NULL;
+
+	/*
+	 * If kitty-keys is "always", push kitty keyboard mode unconditionally
+	 * without waiting for a DA response. This forces kitty mode on
+	 * terminals that may not advertise support. Set TTY_HAVEDA_KITTY to
+	 * prevent the DA handler from pushing a second time on reconnect.
+	 */
+	if (options_get_number(global_options, "kitty-keys") == 2) {
+		if (tty_term_has(tty->term, TTYC_ENKITK)) {
+			tty_putcode(tty, TTYC_ENKITK);
+			tty_puts(tty, "\033[?u");
+			tty->flags |= TTY_HAVEDA_KITTY;
+		}
+	}
 }
 
 void
@@ -440,7 +454,8 @@ tty_stop_tty(struct tty *tty)
 
 	if (!(tty->flags & TTY_STARTED))
 		return;
-	tty->flags &= ~TTY_STARTED;
+	tty->flags &= ~(TTY_STARTED|TTY_ALL_REQUEST_FLAGS);
+	tty->kitty_state = 0;
 
 	evtimer_del(&tty->start_timer);
 	evtimer_del(&tty->clipboard_timer);

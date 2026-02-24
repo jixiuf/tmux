@@ -2072,11 +2072,14 @@ input_csi_dispatch_sm_graphics(__unused struct input_ctx *ictx)
 static void
 input_csi_dispatch_kitk_query(struct input_ctx *ictx)
 {
-	struct screen		*s = ictx->ctx.s;
-	enum kitty_kbd_flags	 flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
+	/*
+	 * Per the kitty keyboard protocol spec, respond with the currently
+	 * active flags. Applications detect protocol support from the
+	 * response format (CSI ? flags u), not from the flags value.
+	 */
+	struct screen	*s = ictx->ctx.s;
+	u_int		 flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
 
-	/* Per the kitty keyboard protocol spec, CSI ? u reports the flags
-	 * currently in effect, not the supported-capabilities mask. */
 	input_reply(ictx, 1, "\033[?%uu", flags);
 	log_debug("%s kitty kbd: query active flags: %u", __func__, flags);
 }
@@ -2088,7 +2091,7 @@ input_csi_dispatch_kitk_push(struct input_ctx *ictx)
 	/* CSI > flags u  # for push, if flags omitted default to zero */
 	uint8_t idx;
 	int flags;
-	flags = input_get(ictx, 0, 0, 0) & KITTY_KBD_SUPPORTED;
+	flags = input_get(ictx, 0, 0, 0);
 	idx = ictx->ctx.s->kitty_kbd.idx;
 
 	if (idx + 1 >= nitems(ictx->ctx.s->kitty_kbd.flags)) {
@@ -2137,18 +2140,26 @@ input_csi_dispatch_kitk_pop(struct input_ctx *ictx)
 	uint8_t idx;
 	int i, count;
 	count = input_get(ictx, 0, 1, 1);
+	if (count > (int)nitems(ictx->ctx.s->kitty_kbd.flags))
+		count = nitems(ictx->ctx.s->kitty_kbd.flags);
 	log_debug("%s kitty kbd: popping %d levels of flags", __func__, count);
 
 	idx = ictx->ctx.s->kitty_kbd.idx;
 	for (i = 0; i < count; i++) {
-		/* Reset flags. This ensures we get flags=0 when
-		 * over-popping */
 		ictx->ctx.s->kitty_kbd.flags[idx] = 0;
 		if (idx == 0)
-			break;
+			break; /* don't wrap below base */
 		idx--;
 	}
 	ictx->ctx.s->kitty_kbd.idx = idx;
+
+	/*
+	 * If kitty-keys is "always", prevent base flags from going to 0.
+	 * Analogous to extended-keys always override in INPUT_CSI_MODOFF.
+	 */
+	if (idx == 0 && ictx->ctx.s->kitty_kbd.flags[0] == 0 &&
+	    options_get_number(global_options, "kitty-keys") == 2)
+		ictx->ctx.s->kitty_kbd.flags[0] = KITTY_KBD_DISAMBIGUATE;
 
 	log_debug("kitty kbd: flags after pop: 0x%03x",
 	    ictx->ctx.s->kitty_kbd.flags[idx]);
@@ -2185,7 +2196,7 @@ input_csi_dispatch_kitk_set(struct input_ctx *ictx)
 	int flag_set;
 	int mode;
 	/* CSI = flags ; mode u */
-	flag_set = input_get(ictx, 0, 0, 0) & KITTY_KBD_SUPPORTED;
+	flag_set = input_get(ictx, 0, 0, 0);
 	mode = input_get(ictx, 1, 1, 1);
 	s = ictx->ctx.s;
 	idx = s->kitty_kbd.idx;
@@ -2211,6 +2222,14 @@ input_csi_dispatch_kitk_set(struct input_ctx *ictx)
 	}
 	log_debug("%s kitty kbd: flags after update: 0x%03x",
 	    __func__, s->kitty_kbd.flags[idx]);
+
+	/*
+	 * If kitty-keys is "always", prevent base flags from going to 0.
+	 * Analogous to the override in input_csi_dispatch_kitk_pop().
+	 */
+	if (idx == 0 && s->kitty_kbd.flags[0] == 0 &&
+	    options_get_number(global_options, "kitty-keys") == 2)
+		s->kitty_kbd.flags[0] = KITTY_KBD_DISAMBIGUATE;
 
 	/* Forward updated flags to outer terminal */
 	if (options_get_number(global_options, "kitty-keys")) {

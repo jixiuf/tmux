@@ -1078,8 +1078,11 @@ set_modifier(key_code key ,u_int modifiers)
 		 * which is unfortunate, as in general case determining if a
 		 * character is shifted or not requires knowing the input
 		 * keyboard layout. So we only fix up the trivial case.
+		 * However, if Caps Lock is explicitly present, don't infer
+		 * Shift from uppercase — the uppercase is from Caps Lock.
 		 */
-		if (modifiers & 0x1 || (key >= 'A' && key <= 'Z'))
+		if (modifiers & 0x1 ||
+		    ((key >= 'A' && key <= 'Z') && !(modifiers & 0x40)))
 			key |= KEYC_SHIFT;
 		if (modifiers & 0x2)
 			key |= (KEYC_META|KEYC_IMPLIED_META); /* Alt */
@@ -1219,6 +1222,14 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 
 		*size = end + 1;
 
+		switch (evtype){
+		case 2:
+			evtype = 1;			/* repeat as press */
+			break;
+		case 3:
+			break;			/* release: propagate */
+		}
+
 		/*  TODO: don't known how to handle
          *	alternate keys and associated text
          *  just ignore them now.
@@ -1285,6 +1296,7 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		case 57424: number = KEYC_KP_END; break;
 		case 57425: number = KEYC_KP_INSERT; break;
 		case 57426: number = KEYC_KP_DELETE; break;
+		case 57427: number = KEYC_KP_BEGIN; break;
         case 57428: number = KEYC_MEDIA_PLAY; break;
         case 57429: number = KEYC_MEDIA_PAUSE; break;
         case 57430: number = KEYC_MEDIA_PLAY_PAUSE; break;
@@ -1315,13 +1327,15 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		}
 		break;
 	case '~':
-		if (sscanf(tmp, "%u;%u~", &number, &modifiers) == 2) {
-			/* Check for event type: number;modifier:evtype~ */
-			cp = strchr(tmp, ':');
-			if (cp != NULL)
+		if (sscanf(tmp, "%u;%u", &number, &modifiers) != 2) {
+			if (sscanf(tmp, "%u",  &number) != 1)
+				return (-1);
+		} else {
+			/* Parse event type from modifiers:evtype if present. */
+			cp = strchr(tmp, ';');
+			if (cp != NULL && (cp = strchr(cp, ':')) != NULL)
 				evtype = strtoul(cp + 1, NULL, 10);
-		} else if (sscanf(tmp, "%u~", &number) != 1)
-			return (-1);
+		}
 		switch (number){
 		case 2:				number=KEYC_IC; break;
 		case 3:				number=KEYC_DC; break;
@@ -1363,9 +1377,9 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 		if(end>2){ 			/* has modifiers: CSI 1; modifiers [ABCDEFHPQS]  */
 			if (sscanf(tmp ,"1;%u",  &modifiers) != 1)
 				return (-1);
-			/* Check for event type: 1;modifier:evtype[A-S] */
-			cp = strchr(tmp, ':');
-			if (cp != NULL)
+			/* Parse event type from modifiers:evtype if present. */
+			cp = strchr(tmp, ';');
+			if (cp != NULL && (cp = strchr(cp, ':')) != NULL)
 				evtype = strtoul(cp + 1, NULL, 10);
 		}
 		break;
@@ -1376,23 +1390,12 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 	}
 	*size = end + 1;
 
-	/* Discard release events, treat repeat as press. */
+	/* Treat repeat as press, propagate release via KEYC_RELEASE. */
 	switch (evtype) {
 	case 2:
-		evtype = 1;			/* repeat as press */
-		break;
-	case 3:					/* release */
-		if (c->session != NULL &&
-		    c->session->curw != NULL &&
-		    c->session->curw->window->active != NULL) {
-			struct screen *s =
-			    c->session->curw->window->active->screen;
-			if (s != NULL &&
-			    (s->kitty_kbd.flags[s->kitty_kbd.idx] &
-			     KITTY_KBD_REPORT_EVENT))
-				break;		/* forward to pane */
-		}
-		return (-2);			/* discard */
+		break;			/* repeat: treat as press */
+	case 3:
+		break;			/* release: propagate */
 	}
 
 	/* Store the key. */
@@ -1414,14 +1417,18 @@ tty_keys_kitty_key(struct tty *tty, const char *buf, size_t len,
 	/* Update the modifiers. */
 	nkey=set_modifier(nkey,modifiers);
 
+	/* Convert S-Tab into Backtab (matches tty_keys_extended_key). */
+	if ((nkey & KEYC_MASK_KEY) == '\011' && (nkey & KEYC_SHIFT))
+		nkey = KEYC_BTAB | (nkey & ~KEYC_MASK_KEY & ~KEYC_SHIFT);
+
+	/* Tag release events so the dispatch can forward them. */
+	if (evtype == 3)
+		nkey |= KEYC_RELEASE;
+
 	if (log_get_level() != 0) {
 		log_debug("%s: kitty key %.*s is %llx (%s)", c->name,
 				  (int)*size, buf, nkey, key_string_lookup_key(nkey, 1));
 	}
-
-	/* Tag release events so input_key_kitty can encode the event type. */
-	if (evtype == 3)
-		nkey |= KEYC_RELEASE;
 
 	*key = nkey;
 	return (0);
