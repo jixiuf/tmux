@@ -17,9 +17,11 @@ TERM=screen
 
 TESTDIR=$(cd -- "$(dirname "$0")" && pwd)
 [ -z "$TEST_TMUX" ] && TEST_TMUX=$(readlink -f "$TESTDIR/../tmux")
-TMUX="$TEST_TMUX -Lt024"
+TMUX="$TEST_TMUX -Ltest"
 $TMUX kill-server 2>/dev/null
-sleep 1
+
+WORKDIR=$(mktemp -d) || exit 1
+trap '$TMUX kill-server 2>/dev/null; rm -rf "$WORKDIR"' EXIT
 
 RED=$(printf '\033[31m')
 GREEN=$(printf '\033[32m')
@@ -43,13 +45,19 @@ check_result () {
 	fi
 }
 
+HELPER="$WORKDIR/helper.py"
+OUTFILE="$WORKDIR/out.txt"
+
 # Create the Python helper that pushes kitty flags then reads stdin.
-cat > /tmp/t024-helper.py << 'PYEOF'
+cat > "$HELPER" << PYEOF
 import sys, os, select, termios, tty
 
 # Push kitty keyboard flags via stdout (disambiguate=0x01).
 sys.stdout.buffer.write(b'\033[>1u')
 sys.stdout.buffer.flush()
+
+# Signal readiness.
+open('$WORKDIR/ready', 'w').close()
 
 # Switch stdin to raw mode so bytes pass through unmodified.
 fd = sys.stdin.fileno()
@@ -58,11 +66,11 @@ tty.setraw(fd)
 
 # Wait for data with a timeout, then read it.
 data = b''
-if select.select([fd], [], [], 3.0)[0]:
+if select.select([fd], [], [], 5.0)[0]:
     # Read initial data.
     data = os.read(fd, 1024)
     # Drain any remaining bytes.
-    while select.select([fd], [], [], 0.3)[0]:
+    while select.select([fd], [], [], 0.5)[0]:
         more = os.read(fd, 1024)
         if not more:
             break
@@ -72,28 +80,35 @@ if select.select([fd], [], [], 3.0)[0]:
 termios.tcsetattr(fd, termios.TCSANOW, old_attrs)
 
 # Write hex-encoded bytes to the output file.
-with open('/tmp/t024-out.txt', 'w') as f:
+with open('$OUTFILE', 'w') as f:
     f.write(data.hex())
 PYEOF
 
-$TMUX -f/dev/null new -x80 -y24 -d || exit 1
-sleep 1
-$TMUX set -g escape-time 0
-$TMUX set -g kitty-keys always
+$TMUX -f/dev/null new -x80 -y24 -d 2>/dev/null || exit 1
+
+# Wait for server.
+n=0; while [ $n -lt 50 ] && ! $TMUX info >/dev/null 2>&1; do sleep 0.1; n=$((n+1)); done
+
+$TMUX set -g escape-time 0 2>/dev/null
+$TMUX set -g kitty-keys always 2>/dev/null
 
 # Run the Python helper in the pane.
-$TMUX send-keys 'python3 /tmp/t024-helper.py' Enter
-sleep 2
+$TMUX send-keys "unset PROMPT_COMMAND; PS1='$ '" Enter
+sleep 0.3
+$TMUX send-keys "python3 $HELPER" Enter
+
+# Wait for helper to signal readiness.
+n=0; while [ $n -lt 50 ] && [ ! -f "$WORKDIR/ready" ]; do sleep 0.1; n=$((n+1)); done
+sleep 0.5
 
 # Send BTab (Shift+Tab). Internally this is KEYC_BTAB.
 $TMUX send-keys BTab
-sleep 1
 
-# Wait for the Python script to time out and write output.
-sleep 3
+# Wait for the Python script to write output.
+n=0; while [ $n -lt 80 ] && [ ! -f "$OUTFILE" ]; do sleep 0.1; n=$((n+1)); done
 
 # Read the hex-encoded output.
-output=$(cat /tmp/t024-out.txt 2>/dev/null)
+output=$(cat "$OUTFILE" 2>/dev/null)
 
 # CSI 9;2u = \033[9;2u = hex: 1b5b393b3275
 case "$output" in
@@ -111,8 +126,5 @@ case "$output" in
 			"other ($output)"
 		;;
 esac
-
-rm -f /tmp/t024-out.txt /tmp/t024-helper.py
-$TMUX kill-server 2>/dev/null
 
 exit $exit_status
