@@ -154,6 +154,9 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		if (sc.argv != NULL)
 			cmd_free_argv(sc.argc, sc.argv);
 		environ_free(sc.environ);
+		layout_destroy_cell(w, lc, &w->layout_root);
+		layout_fix_offsets(w);
+		layout_fix_panes(w, NULL);
 		return (CMD_RETURN_ERROR);
 	}
 	if (input) {
