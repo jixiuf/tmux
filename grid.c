@@ -1548,11 +1548,13 @@ grid_unwrap_position(struct grid *gd, u_int *px, u_int *py, u_int wx, u_int wy)
 	 * until we find the end or the line now containing wx.
 	 */
 	if (wx == UINT_MAX) {
-		while (gd->linedata[yy].flags & GRID_LINE_WRAPPED)
+		while (yy < gd->hsize + gd->sy - 1 &&
+		    gd->linedata[yy].flags & GRID_LINE_WRAPPED)
 			yy++;
 		wx = gd->linedata[yy].cellused;
 	} else {
-		while (gd->linedata[yy].flags & GRID_LINE_WRAPPED) {
+		while (yy < gd->hsize + gd->sy - 1 &&
+		    gd->linedata[yy].flags & GRID_LINE_WRAPPED) {
 			if (wx < gd->linedata[yy].cellused)
 				break;
 			wx -= gd->linedata[yy].cellused;
@@ -1595,11 +1597,15 @@ grid_in_set(struct grid *gd, u_int px, u_int py, const char *set)
 	if (strchr(set, '\t')) {
 		if (gc.flags & GRID_FLAG_PADDING) {
 			pxx = px;
-			do
-				grid_get_cell(gd, --pxx, py, &tmp_gc);
-			while (pxx > 0 && tmp_gc.flags & GRID_FLAG_PADDING);
-			if (tmp_gc.flags & GRID_FLAG_TAB)
-				return (tmp_gc.data.width - (px - pxx));
+			if (pxx > 0) {
+				do
+					grid_get_cell(gd, --pxx, py, &tmp_gc);
+				while (pxx > 0 &&
+				    tmp_gc.flags & GRID_FLAG_PADDING);
+				if (tmp_gc.flags & GRID_FLAG_TAB)
+					return (tmp_gc.data.width -
+					    (px - pxx));
+			}
 		} else if (gc.flags & GRID_FLAG_TAB)
 			return (gc.data.width);
 	}
