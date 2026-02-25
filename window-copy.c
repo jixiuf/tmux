@@ -677,11 +677,12 @@ window_copy_scroll1(struct window_mode_entry *wme, struct window_pane *wp,
 	} else {
 		n = (u_int)-delta;
 		if (data->oy < n) {
+			u_int oy = data->oy;
 			data->oy = 0;
-			if (data->cy + (n - data->oy) >= sy)
+			if (data->cy + (n - oy) >= sy)
 				data->cy = sy - 1;
 			else
-				data->cy += n - data->oy;
+				data->cy += n - oy;
 		} else
 			data->oy -= n;
 	}
@@ -797,11 +798,11 @@ window_copy_pagedown1(struct window_mode_entry *wme, int half_page,
 	}
 
 	if (data->oy < n) {
-		data->oy = 0;
 		if (data->cy + (n - data->oy) >= screen_size_y(data->backing))
 			data->cy = screen_size_y(data->backing) - 1;
 		else
 			data->cy += n - data->oy;
+		data->oy = 0;
 	} else
 		data->oy -= n;
 
@@ -4635,7 +4636,7 @@ window_copy_write_lines(struct window_mode_entry *wme,
 	u_int	yy;
 
 	for (yy = py; yy < py + ny; yy++)
-		window_copy_write_line(wme, ctx, py);
+		window_copy_write_line(wme, ctx, yy);
 }
 
 static void
