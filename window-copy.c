@@ -547,12 +547,19 @@ void
 window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
-	struct window_copy_mode_data	*data = wme->data;
-	struct screen			*backing = data->backing;
+	struct window_copy_mode_data	*data;
+	struct screen			*backing;
 	struct screen_write_ctx	 	 backing_ctx, ctx;
 	struct grid_cell		 gc;
 	u_int				 old_hsize, old_cy;
 	char				*text;
+
+	if (wme == NULL)
+		return;
+	data = wme->data;
+	if (data == NULL)
+		return;
+	backing = data->backing;
 
 	old_hsize = screen_hsize(data->backing);
 	screen_write_start(&backing_ctx, backing);
@@ -856,8 +863,15 @@ char *
 window_copy_get_word(struct window_pane *wp, u_int x, u_int y)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
-	struct window_copy_mode_data	*data = wme->data;
-	struct grid			*gd = data->backing->grid;
+	struct window_copy_mode_data	*data;
+	struct grid			*gd;
+
+	if (wme == NULL)
+		return (xstrdup(""));
+	data = wme->data;
+	if (data == NULL)
+		return (xstrdup(""));
+	gd = data->backing->grid;
 
 	return (format_grid_word(gd, x, gd->hsize + y - data->oy));
 }
@@ -866,8 +880,15 @@ char *
 window_copy_get_line(struct window_pane *wp, u_int y)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
-	struct window_copy_mode_data	*data = wme->data;
-	struct grid			*gd = data->screen.grid;
+	struct window_copy_mode_data	*data;
+	struct grid			*gd;
+
+	if (wme == NULL)
+		return (xstrdup(""));
+	data = wme->data;
+	if (data == NULL)
+		return (xstrdup(""));
+	gd = data->screen.grid;
 
 	return (format_grid_line(gd, gd->hsize + y));
 }
@@ -876,8 +897,15 @@ char *
 window_copy_get_hyperlink(struct window_pane *wp, u_int x, u_int y)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
-	struct window_copy_mode_data	*data = wme->data;
-	struct grid			*gd = data->screen.grid;
+	struct window_copy_mode_data	*data;
+	struct grid			*gd;
+
+	if (wme == NULL)
+		return (xstrdup(""));
+	data = wme->data;
+	if (data == NULL)
+		return (xstrdup(""));
+	gd = data->screen.grid;
 
 	return (format_grid_hyperlink(gd, x, gd->hsize + y, wp->screen));
 }
@@ -4536,9 +4564,12 @@ window_copy_get_current_offset(struct window_pane *wp, u_int *offset,
     u_int *size)
 {
 	struct window_mode_entry	*wme = TAILQ_FIRST(&wp->modes);
-	struct window_copy_mode_data	*data = wme->data;
+	struct window_copy_mode_data	*data;
 	u_int				 hsize;
 
+	if (wme == NULL)
+		return (0);
+	data = wme->data;
 	if (data == NULL)
 		return (0);
 	hsize = screen_hsize(data->backing);
@@ -5063,7 +5094,8 @@ window_copy_pipe_run(struct window_mode_entry *wme, struct session *s,
 	if (cmd != NULL && *cmd != '\0') {
 		job = job_run(cmd, 0, NULL, NULL, s, NULL, NULL, NULL, NULL,
 		    NULL, JOB_NOWAIT, -1, -1);
-		bufferevent_write(job_get_event(job), buf, *len);
+		if (job != NULL)
+			bufferevent_write(job_get_event(job), buf, *len);
 	}
 	return (buf);
 }
