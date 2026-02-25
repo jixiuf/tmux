@@ -1373,7 +1373,10 @@ window_pane_full_size_offset(struct window_pane *wp, u_int *xoff, u_int *yoff,
 	else
 		sb_w = 0;
 	if (sb_pos == PANE_SCROLLBARS_LEFT) {
-		*xoff = wp->xoff - sb_w;
+		if (sb_w > wp->xoff)
+			*xoff = 0;
+		else
+			*xoff = wp->xoff - sb_w;
 		*sx = wp->sx + sb_w;
 	} else { /* sb_pos == PANE_SCROLLBARS_RIGHT */
 		*xoff = wp->xoff;
@@ -1479,8 +1482,8 @@ window_pane_find_down(struct window_pane *wp)
 			edge = 0;
 	}
 
-	left = wp->xoff;
-	right = wp->xoff + wp->sx;
+	left = xoff;
+	right = xoff + sx;
 
 	TAILQ_FOREACH(next, &w->panes, entry) {
 		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
@@ -1583,8 +1586,8 @@ window_pane_find_right(struct window_pane *wp)
 	if (edge >= w->sx)
 		edge = 0;
 
-	top = wp->yoff;
-	bottom = wp->yoff + wp->sy;
+	top = yoff;
+	bottom = yoff + sy;
 
 	TAILQ_FOREACH(next, &w->panes, entry) {
 		window_pane_full_size_offset(next, &xoff, &yoff, &sx, &sy);
