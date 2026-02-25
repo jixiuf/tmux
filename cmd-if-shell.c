@@ -156,8 +156,11 @@ cmd_if_shell_callback(struct job *job)
 	cmdlist = args_make_commands(state, 0, NULL, &error);
 	if (cmdlist == NULL) {
 		if (cdata->item == NULL) {
-			*error = toupper((u_char)*error);
-			status_message_set(c, -1, 1, 0, 0, "%s", error);
+			if (c != NULL) {
+				*error = toupper((u_char)*error);
+				status_message_set(c, -1, 1, 0, 0, "%s",
+				    error);
+			}
 		} else
 			cmdq_error(cdata->item, "%s", error);
 		free(error);

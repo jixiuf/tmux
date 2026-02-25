@@ -2950,8 +2950,10 @@ input_exit_apc(struct input_ctx *ictx)
 	    options_get_number(wp->options, "allow-set-title") &&
 	    screen_set_title(sctx->s, ictx->input_buf)) {
 		notify_pane("pane-title-changed", wp);
-		server_redraw_window_borders(wp->window);
-		server_status_window(wp->window);
+		if (wp->window != NULL) {
+			server_redraw_window_borders(wp->window);
+			server_status_window(wp->window);
+		}
 	}
 }
 
@@ -2985,6 +2987,8 @@ input_exit_rename(struct input_ctx *ictx)
 	if (!utf8_isvalid(ictx->input_buf))
 		return;
 	w = wp->window;
+	if (w == NULL)
+		return;
 
 	if (ictx->input_len == 0) {
 		o = options_get_only(w->options, "automatic-rename");

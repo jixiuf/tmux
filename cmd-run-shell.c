@@ -90,7 +90,7 @@ cmd_run_shell_print(struct job *job, const char *msg)
 			cmdq_print(cdata->item, "%s", msg);
 			return;
 		}
-		if (cdata->item != NULL && cdata->client != NULL)
+		if (cdata->client != NULL)
 			wp = server_client_get_pane(cdata->client);
 		if (wp == NULL && cmd_find_from_nothing(&fs, 0) == 0)
 			wp = fs.wp;
@@ -206,8 +206,11 @@ cmd_run_shell_timer(__unused int fd, __unused short events, void* arg)
 	cmdlist = args_make_commands(cdata->state, 0, NULL, &error);
 	if (cmdlist == NULL) {
 		if (cdata->item == NULL) {
-			*error = toupper((u_char)*error);
-			status_message_set(c, -1, 1, 0, 0, "%s", error);
+			if (c != NULL) {
+				*error = toupper((u_char)*error);
+				status_message_set(c, -1, 1, 0, 0, "%s",
+				    error);
+			}
 		} else
 			cmdq_error(cdata->item, "%s", error);
 		free(error);
