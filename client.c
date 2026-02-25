@@ -458,8 +458,6 @@ client_send_identify(const char *ttynam, const char *termname, char **caps,
 	u_int	  i;
 
 	proc_send(client_peer, MSG_IDENTIFY_LONGFLAGS, -1, &flags, sizeof flags);
-	proc_send(client_peer, MSG_IDENTIFY_LONGFLAGS, -1, &client_flags,
-	    sizeof client_flags);
 
 	proc_send(client_peer, MSG_IDENTIFY_TERM, -1, termname,
 	    strlen(termname) + 1);
