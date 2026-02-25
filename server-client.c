@@ -196,7 +196,7 @@ server_client_overlay_range(u_int x, u_int y, u_int sx, u_int sy, u_int px,
 	u_int	ox, onx;
 
 	/* Trivial case of no overlap in the y direction. */
-	if (py < y || py > y + sy - 1) {
+	if (sy == 0 || py < y || py > y + sy - 1) {
 		server_client_ensure_ranges(r, 1);
 		r->ranges[0].px = px;
 		r->ranges[0].nx = nx;
@@ -632,9 +632,12 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 		sb_w = 0;
 		sb_pad = 0;
 	}
-	if (pane_status == PANE_STATUS_TOP)
-		line = wp->yoff - 1;
-	else if (pane_status == PANE_STATUS_BOTTOM)
+	if (pane_status == PANE_STATUS_TOP) {
+		if (wp->yoff > 0)
+			line = wp->yoff - 1;
+		else
+			line = 0;
+	} else if (pane_status == PANE_STATUS_BOTTOM)
 		line = wp->yoff + wp->sy;
 
 	/* Check if point is within the pane or scrollbar. */
@@ -645,12 +648,14 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	    ((sb_pos == PANE_SCROLLBARS_RIGHT &&
 	    px < wp->xoff + wp->sx + sb_pad + sb_w) ||
 	    (sb_pos == PANE_SCROLLBARS_LEFT &&
+	    wp->xoff >= sb_pad + sb_w &&
 	    px < wp->xoff + wp->sx - sb_pad - sb_w))) {
 		/* Check if in the scrollbar. */
 		if ((sb_pos == PANE_SCROLLBARS_RIGHT &&
 		    (px >= wp->xoff + wp->sx + sb_pad &&
 		    px < wp->xoff + wp->sx + sb_pad + sb_w)) ||
 		    (sb_pos == PANE_SCROLLBARS_LEFT &&
+		    wp->xoff >= sb_pad + sb_w &&
 		    (px >= wp->xoff - sb_pad - sb_w &&
 		    px < wp->xoff - sb_pad))) {
 			/* Check where inside the scrollbar. */
@@ -1503,13 +1508,13 @@ have_event:
 			break;
 		case MOUSE_BUTTON_10:
 			if (where == PANE)
-				key = KEYC_MOUSEUP1_PANE;
+				key = KEYC_MOUSEUP10_PANE;
 			if (where == STATUS)
-				key = KEYC_MOUSEUP1_STATUS;
+				key = KEYC_MOUSEUP10_STATUS;
 			if (where == STATUS_LEFT)
-				key = KEYC_MOUSEUP1_STATUS_LEFT;
+				key = KEYC_MOUSEUP10_STATUS_LEFT;
 			if (where == STATUS_RIGHT)
-				key = KEYC_MOUSEUP1_STATUS_RIGHT;
+				key = KEYC_MOUSEUP10_STATUS_RIGHT;
 			if (where == STATUS_DEFAULT)
 				key = KEYC_MOUSEUP10_STATUS_DEFAULT;
 			if (where == SCROLLBAR_UP)
@@ -1517,9 +1522,9 @@ have_event:
 			if (where == SCROLLBAR_SLIDER)
 				key = KEYC_MOUSEUP10_SCROLLBAR_SLIDER;
 			if (where == SCROLLBAR_DOWN)
-				key = KEYC_MOUSEUP1_SCROLLBAR_DOWN;
+				key = KEYC_MOUSEUP10_SCROLLBAR_DOWN;
 			if (where == BORDER)
-				key = KEYC_MOUSEUP1_BORDER;
+				key = KEYC_MOUSEUP10_BORDER;
 			break;
 		case MOUSE_BUTTON_11:
 			if (where == PANE)
@@ -3290,11 +3295,11 @@ server_client_check_redraw(struct client *c)
 				if (wp->flags & (PANE_REDRAW)) {
 					log_debug("%s: pane %%%u needs redraw",
 					    c->name, wp->id);
-					c->redraw_panes |= (1 << bit);
+					c->redraw_panes |= (1ULL << bit);
 				} else if (wp->flags & PANE_REDRAWSCROLLBAR) {
 					log_debug("%s: pane %%%u scrollbar "
 					    "needs redraw", c->name, wp->id);
-					c->redraw_scrollbars |= (1 << bit);
+					c->redraw_scrollbars |= (1ULL << bit);
 				}
 				if (++bit == 64) {
 					/*
@@ -3331,10 +3336,10 @@ server_client_check_redraw(struct client *c)
 			if (wp->flags & PANE_REDRAW)
 				redraw_pane = 1;
 			else if (c->flags & CLIENT_REDRAWPANES) {
-				if (c->redraw_panes & (1 << bit))
+				if (c->redraw_panes & (1ULL << bit))
 					redraw_pane = 1;
 			} else if (c->flags & CLIENT_REDRAWSCROLLBARS) {
-				if (c->redraw_scrollbars & (1 << bit))
+				if (c->redraw_scrollbars & (1ULL << bit))
 					redraw_scrollbar_only = 1;
 			}
 			bit++;
@@ -3621,6 +3626,8 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 		switch (pr->status) {
 		case CMD_PARSE_ERROR:
 			cause = pr->error;
+			args_free_values(values, argc);
+			free(values);
 			goto error;
 		case CMD_PARSE_SUCCESS:
 			break;
