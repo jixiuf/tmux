@@ -655,8 +655,10 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 		    px < wp->xoff - sb_pad))) {
 			/* Check where inside the scrollbar. */
 			sl_top = wp->yoff + wp->sb_slider_y;
-			sl_bottom = (wp->yoff + wp->sb_slider_y +
-			    wp->sb_slider_h - 1);
+			if (wp->sb_slider_h > 0)
+				sl_bottom = sl_top + wp->sb_slider_h - 1;
+			else
+				sl_bottom = sl_top;
 			if (py < sl_top)
 				return (SCROLLBAR_UP);
 			else if (py >= sl_top &&
