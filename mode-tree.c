@@ -307,11 +307,12 @@ mode_tree_down(struct mode_tree_data *mtd, int wrap)
 static void
 mode_tree_swap(struct mode_tree_data *mtd, int direction)
 {
-	u_int	current_depth = mtd->line_list[mtd->current].depth;
-	u_int	swap_with, swap_with_depth;
+	u_int	current_depth, swap_with, swap_with_depth;
 
-	if (mtd->swapcb == NULL)
+	if (mtd->swapcb == NULL || mtd->line_size == 0)
 		return;
+
+	current_depth = mtd->line_list[mtd->current].depth;
 
 	/* Find the next line at the same depth with the same parent . */
 	swap_with = mtd->current;
@@ -336,18 +337,24 @@ mode_tree_swap(struct mode_tree_data *mtd, int direction)
 void *
 mode_tree_get_current(struct mode_tree_data *mtd)
 {
+	if (mtd->line_size == 0)
+		return (NULL);
 	return (mtd->line_list[mtd->current].item->itemdata);
 }
 
 const char *
 mode_tree_get_current_name(struct mode_tree_data *mtd)
 {
+	if (mtd->line_size == 0)
+		return (NULL);
 	return (mtd->line_list[mtd->current].item->name);
 }
 
 void
 mode_tree_expand_current(struct mode_tree_data *mtd)
 {
+	if (mtd->line_size == 0)
+		return;
 	if (!mtd->line_list[mtd->current].item->expanded) {
 		mtd->line_list[mtd->current].item->expanded = 1;
 		mode_tree_build(mtd);
@@ -357,6 +364,8 @@ mode_tree_expand_current(struct mode_tree_data *mtd)
 void
 mode_tree_collapse_current(struct mode_tree_data *mtd)
 {
+	if (mtd->line_size == 0)
+		return;
 	if (mtd->line_list[mtd->current].item->expanded) {
 		mtd->line_list[mtd->current].item->expanded = 0;
 		mode_tree_build(mtd);
@@ -397,6 +406,8 @@ mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
 {
 	u_int	found;
 
+	if (mtd->line_size == 0)
+		return (0);
 	if (mode_tree_get_tag(mtd, tag, &found)) {
 		mtd->current = found;
 		if (mtd->current > mtd->height - 1)
@@ -447,6 +458,8 @@ mode_tree_each_tagged(struct mode_tree_data *mtd, mode_tree_each_cb cb,
 		}
 	}
 	if (!fired && current) {
+		if (mtd->line_size == 0)
+			return;
 		mti = mtd->line_list[mtd->current].item;
 		cb(mtd->modedata, mti->itemdata, c, key);
 	}
@@ -840,7 +853,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 
 	line = &mtd->line_list[mtd->current];
 	mti = line->item;
-	if (mti->draw_as_parent)
+	if (mti->draw_as_parent && mti->parent != NULL)
 		mti = mti->parent;
 
 	screen_write_cursormove(&ctx, 0, h, 0);
@@ -893,6 +906,8 @@ mode_tree_search_backward(struct mode_tree_data *mtd)
 
 	if (mtd->search == NULL)
 		return (NULL);
+	if (mtd->line_size == 0)
+		return (NULL);
 
 	mti = last = mtd->line_list[mtd->current].item;
 	for (;;) {
@@ -941,6 +956,8 @@ mode_tree_search_forward(struct mode_tree_data *mtd)
 	int			 icase = mtd->search_icase;
 
 	if (mtd->search == NULL)
+		return (NULL);
+	if (mtd->line_size == 0)
 		return (NULL);
 
 	mti = last = mtd->line_list[mtd->current].item;
@@ -1092,7 +1109,9 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 	char			*title;
 	u_int			 line;
 
-	if (mtd->offset + y > mtd->line_size - 1)
+	if (mtd->line_size == 0)
+		line = mtd->current;
+	else if (mtd->offset + y > mtd->line_size - 1)
 		line = mtd->current;
 	else
 		line = mtd->offset + y;
@@ -1172,6 +1191,10 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 		return (0);
 	}
 
+	if (mtd->line_size == 0) {
+		*key = KEYC_NONE;
+		return (0);
+	}
 	line = &mtd->line_list[mtd->current];
 	current = line->item;
 

@@ -366,8 +366,11 @@ popup_resize_cb(__unused struct client *c, void *data)
 
 	if (pd == NULL)
 		return;
-	if (pd->md != NULL)
+	if (pd->md != NULL) {
 		menu_free_cb(c, pd->md);
+		pd->md = NULL;
+		pd->menu = NULL;
+	}
 
 	/* Adjust position and size. */
 	if (pd->psy > tty->sy)

@@ -1021,6 +1021,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmdq_item *item,
 		}
 		if (c->session == NULL || c->session->curw == NULL)
 			goto error;
+		fs->s = c->session;
 		fs->wl = c->session->curw;
 		fs->wp = c->session->curw->window->active;
 		fs->w = c->session->curw->window;
