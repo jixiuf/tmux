@@ -413,8 +413,7 @@ commands	: command
 				$$ = $1;
 				TAILQ_INSERT_TAIL($$, $3, entry);
 			} else {
-				$$ = cmd_parse_new_commands();
-				cmd_parse_free_commands($1);
+				$$ = $1;
 				cmd_parse_free_command($3);
 			}
 		}
@@ -792,6 +791,7 @@ cmd_parse_expand_alias(struct cmd_parse_command *cmd,
 
 	last = TAILQ_LAST(cmds, cmd_parse_commands);
 	if (last == NULL) {
+		cmd_parse_free_commands(cmds);
 		pr->status = CMD_PARSE_SUCCESS;
 		pr->cmdlist = cmd_list_new();
 		return (1);

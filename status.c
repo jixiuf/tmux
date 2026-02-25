@@ -886,6 +886,7 @@ status_prompt_redraw(struct client *c)
 	    &gc);
 
 finished:
+	free(prompt);
 	screen_write_stop(&ctx);
 
 	if (grid_compare(sl->active->grid, old_screen.grid) == 0) {
@@ -1426,7 +1427,7 @@ process_key:
 		if (c->prompt_index != size) {
 			memmove(c->prompt_buffer + c->prompt_index,
 			    c->prompt_buffer + c->prompt_index + 1,
-			    (size + 1 - c->prompt_index) *
+			    (size - c->prompt_index) *
 			    sizeof *c->prompt_buffer);
 			goto changed;
 		}
@@ -1840,6 +1841,7 @@ status_prompt_menu_callback(__unused struct menu *menu, u_int idx, key_code key,
 	for (i = 0; i < spm->size; i++)
 		free(spm->list[i]);
 	free(spm->list);
+	free(spm);
 }
 
 /* Show complete word menu. */
@@ -1855,7 +1857,7 @@ status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
 
 	if (size <= 1)
 		return (0);
-	if (c->tty.sy - lines < 3)
+	if (c->tty.sy < lines + 3)
 		return (0);
 
 	spm = xmalloc(sizeof *spm);
@@ -1913,7 +1915,7 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 	u_int				  lines = status_line_size(c), height;
 	u_int				  py, size = 0, i;
 
-	if (c->tty.sy - lines < 3)
+	if (c->tty.sy < lines + 3)
 		return (NULL);
 
 	spm = xmalloc(sizeof *spm);

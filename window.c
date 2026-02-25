@@ -80,19 +80,31 @@ RB_GENERATE(window_pane_tree, window_pane, tree_entry, window_pane_cmp);
 int
 window_cmp(struct window *w1, struct window *w2)
 {
-	return (w1->id - w2->id);
+	if (w1->id < w2->id)
+		return (-1);
+	if (w1->id > w2->id)
+		return (1);
+	return (0);
 }
 
 int
 winlink_cmp(struct winlink *wl1, struct winlink *wl2)
 {
-	return (wl1->idx - wl2->idx);
+	if (wl1->idx < wl2->idx)
+		return (-1);
+	if (wl1->idx > wl2->idx)
+		return (1);
+	return (0);
 }
 
 int
 window_pane_cmp(struct window_pane *wp1, struct window_pane *wp2)
 {
-	return (wp1->id - wp2->id);
+	if (wp1->id < wp2->id)
+		return (-1);
+	if (wp1->id > wp2->id)
+		return (1);
+	return (0);
 }
 
 struct winlink *
@@ -615,8 +627,12 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 struct window_pane *
 window_find_string(struct window *w, const char *s)
 {
-	u_int	x, y, top = 0, bottom = w->sy - 1;
+	u_int	x, y, top = 0, bottom;
 	int	status;
+
+	if (w->sx == 0 || w->sy == 0)
+		return (NULL);
+	bottom = w->sy - 1;
 
 	x = w->sx / 2;
 	y = w->sy / 2;
