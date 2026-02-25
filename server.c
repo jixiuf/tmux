@@ -130,6 +130,7 @@ server_create_socket(uint64_t flags, char **cause)
 	if (bind(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
 		saved_errno = errno;
 		close(fd);
+		umask(mask);
 		errno = saved_errno;
 		goto fail;
 	}

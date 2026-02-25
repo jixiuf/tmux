@@ -357,7 +357,7 @@ sixel_parse(const char *buf, size_t len, u_int p2, u_int xpixel, u_int ypixel)
 	return (si);
 
 bad:
-	free(si);
+	sixel_free(si);
 	return (NULL);
 }
 
@@ -403,6 +403,11 @@ sixel_log(struct sixel_image *si)
 void
 sixel_size_in_cells(struct sixel_image *si, u_int *x, u_int *y)
 {
+	if (si->xpixel == 0 || si->ypixel == 0) {
+		*x = 0;
+		*y = 0;
+		return;
+	}
 	if ((si->x % si->xpixel) == 0)
 		*x = (si->x / si->xpixel);
 	else
@@ -455,12 +460,17 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 	new->p2 = si->p2;
 
 	new->set_ra = si->set_ra;
-	/* subtract offset */
-	new->ra_x = new->ra_x > pox ? new->ra_x - pox : 0;
-	new->ra_y = new->ra_y > poy ? new->ra_y - poy : 0;
+	/*
+	 * Raster attributes offset adjustment: new->ra_x/ra_y are always 0
+	 * after xcalloc, so the subtraction below is dead code. Instead,
+	 * compute from si->ra_x/ra_y directly: clamp to the visible region,
+	 * then subtract the pixel offset.
+	 */
+	new->ra_x = si->ra_x > pox ? si->ra_x - pox : 0;
+	new->ra_y = si->ra_y > poy ? si->ra_y - poy : 0;
 	/* clamp to size */
-	new->ra_x = si->ra_x < psx ? si->ra_x : psx;
-	new->ra_y = si->ra_y < psy ? si->ra_y : psy;
+	new->ra_x = new->ra_x < psx ? new->ra_x : psx;
+	new->ra_y = new->ra_y < psy ? new->ra_y : psy;
 	/* resize */
 	new->ra_x = new->ra_x * xpixel / si->xpixel;
 	new->ra_y = new->ra_y * ypixel / si->ypixel;
