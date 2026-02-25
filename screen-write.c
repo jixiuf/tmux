@@ -1618,7 +1618,7 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx, u_int bg)
 	u_int		 sx = screen_size_x(s);
 
 #ifdef ENABLE_SIXEL
-	if (image_check_line(s, 0, s->cy - 1) && ctx->wp != NULL)
+	if (s->cy > 0 && image_check_line(s, 0, s->cy) && ctx->wp != NULL)
 		ctx->wp->flags |= PANE_REDRAW;
 #endif
 
@@ -1720,10 +1720,10 @@ screen_write_collect_trim(struct screen_write_ctx *ctx, u_int y, u_int x,
 		if (csx >= sx && cex <= ex) {
 			log_debug("%s: %p %u-%u inside %u-%u", __func__, ci,
 			    csx, cex, sx, ex);
-			TAILQ_REMOVE(&cl->items, ci, entry);
-			screen_write_free_citem(ci);
 			if (csx == 0 && ci->wrapped && wrapped != NULL)
 				*wrapped = 1;
+			TAILQ_REMOVE(&cl->items, ci, entry);
+			screen_write_free_citem(ci);
 			continue;
 		}
 

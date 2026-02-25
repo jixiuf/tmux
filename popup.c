@@ -237,7 +237,7 @@ popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx)
 		*/
 		for (i = 0; i < mr->used; i++) {
 			server_client_overlay_range(pd->px, pd->py, pd->sx,
-			    pd->sy, r->ranges[i].px, py, r->ranges[i].nx,
+			    pd->sy, mr->ranges[i].px, py, mr->ranges[i].nx,
 			    &pd->or[i]);
 		}
 
@@ -257,6 +257,7 @@ popup_check_cb(struct client* c, void *data, u_int px, u_int py, u_int nx)
 				k++;
 			}
 		}
+		r->used = k;
 		return (r);
 	}
 
@@ -756,7 +757,8 @@ popup_modify(struct client *c, const char *title, const char *style,
 			if (pd->job != NULL)
 				job_resize(pd->job, pd->sx, pd->sy);
 		} else if (pd->border_lines == BOX_LINES_NONE &&
-		    pd->border_lines != lines) {
+		    pd->border_lines != lines &&
+		    pd->sx > 2 && pd->sy > 2) {
 			screen_resize(&pd->s, pd->sx - 2, pd->sy - 2, 1);
 			if (pd->job != NULL)
 				job_resize(pd->job, pd->sx - 2, pd->sy - 2);
@@ -934,8 +936,10 @@ popup_editor(struct client *c, const char *buf, size_t len,
 	if (fd == -1)
 		return (-1);
 	f = fdopen(fd, "w");
-	if (f == NULL)
+	if (f == NULL) {
+		close(fd);
 		return (-1);
+	}
 	if (fwrite(buf, len, 1, f) != 1) {
 		fclose(f);
 		return (-1);
