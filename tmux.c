@@ -127,7 +127,7 @@ expand_path(const char *path, const char *home)
 			name = xstrndup(path + 1, end - path - 1);
 		value = environ_find(global_environ, name);
 		free(name);
-		if (value == NULL)
+		if (value == NULL || value->value == NULL)
 			return (NULL);
 		if (end == NULL)
 			end = "";

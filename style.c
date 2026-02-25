@@ -343,12 +343,12 @@ style_tostring(struct style *sy)
 		comma = ",";
 	}
 	if (gc->attr != 0) {
-		xsnprintf(s + off, sizeof s - off, "%s%s", comma,
+		off += xsnprintf(s + off, sizeof s - off, "%s%s", comma,
 		    attributes_tostring(gc->attr));
 		comma = ",";
 	}
 	if (sy->width >= 0) {
-		xsnprintf(s + off, sizeof s - off, "%swidth=%u", comma,
+		off += xsnprintf(s + off, sizeof s - off, "%swidth=%u", comma,
 		    sy->width);
 		comma = ",";
 	}

@@ -1162,7 +1162,7 @@ window_customize_reset_option(struct window_customize_modedata *data,
 
 	oo = item->oo;
 	while (oo != NULL) {
-		o = options_get_only(item->oo, item->name);
+		o = options_get_only(oo, item->name);
 		if (o != NULL)
 			options_remove_or_default(o, -1, NULL);
 		oo = options_get_parent(oo);

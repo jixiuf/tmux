@@ -275,7 +275,7 @@ if_else		: ELSE
 			struct cmd_parse_scope	*scope;
 
 			scope = xmalloc(sizeof *scope);
-			scope->flag = !ps->scope->flag;
+			scope->flag = (ps->scope != NULL) ? !ps->scope->flag : 0;
 
 			free(ps->scope);
 			ps->scope = scope;
@@ -686,6 +686,8 @@ cmd_parse_run_parser(char **cause)
 		TAILQ_REMOVE(&ps->stack, scope, entry);
 		free(scope);
 	}
+	free(ps->scope);
+	ps->scope = NULL;
 	if (retval != 0) {
 		*cause = ps->error;
 		return (NULL);
@@ -1604,7 +1606,7 @@ yylex_token_tilde(char **buf, size_t *len)
 
 	if (*name == '\0') {
 		envent = environ_find(global_environ, "HOME");
-		if (envent != NULL && *envent->value != '\0')
+		if (envent != NULL && envent->value != NULL && *envent->value != '\0')
 			home = envent->value;
 		else if ((pw = getpwuid(getuid())) != NULL)
 			home = pw->pw_dir;

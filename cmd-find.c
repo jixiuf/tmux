@@ -91,7 +91,7 @@ cmd_find_inside_pane(struct client *c)
 	}
 	if (wp == NULL) {
 		envent = environ_find(c->environ, "TMUX_PANE");
-		if (envent != NULL)
+		if (envent != NULL && envent->value != NULL)
 			wp = window_pane_find_by_id_str(envent->value);
 	}
 	if (wp != NULL)

@@ -608,7 +608,7 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 #endif
 	/* Check for COLORTERM. */
 	envent = environ_find(tty->client->environ, "COLORTERM");
-	if (envent != NULL) {
+	if (envent != NULL && envent->value != NULL) {
 		log_debug("%s COLORTERM=%s", tty->client->name, envent->value);
 		if (strcasecmp(envent->value, "truecolor") == 0 ||
 		    strcasecmp(envent->value, "24bit") == 0)
