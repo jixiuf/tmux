@@ -30,6 +30,8 @@ def kill_lingering_servers(sockdir):
 
 def run_test(t, sockdir, label, strict):
     env = {**os.environ, "TMUX_TMPDIR": sockdir}
+    env.pop("TMUX", None)
+    env.pop("TMUX_PANE", None)
     if strict:
         env["STRICT"] = "1"
     t_start = time.time()

@@ -683,7 +683,7 @@ session_group_synchronize1(struct session *target, struct session *s)
 	/* Fix up the current window. */
 	if (s->curw != NULL)
 		s->curw = winlink_find_by_index(&s->windows, s->curw->idx);
-	else
+	else if (target->curw != NULL)
 		s->curw = winlink_find_by_index(&s->windows, target->curw->idx);
 
 	/* Fix up the last window stack. */

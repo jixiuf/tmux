@@ -164,6 +164,9 @@ server_lock_client(struct client *c)
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
 
+	if (c->session == NULL)
+		return;
+
 	cmd = options_get_string(c->session->options, "lock-command");
 	if (*cmd == '\0' || strlen(cmd) + 1 > MAX_IMSGSIZE - IMSG_HEADER_SIZE)
 		return;

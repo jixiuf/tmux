@@ -465,6 +465,8 @@ popup_menu_done(__unused struct menu *menu, __unused u_int choice,
 
 	switch (key) {
 	case 'p':
+		if (pd->job == NULL)
+			break;
 		pb = paste_get_top(NULL);
 		if (pb != NULL) {
 			buf = paste_buffer_data(pb, &len);
@@ -751,11 +753,13 @@ popup_modify(struct client *c, const char *title, const char *style,
 	if (lines != BOX_LINES_DEFAULT) {
 		if (lines == BOX_LINES_NONE && pd->border_lines != lines) {
 			screen_resize(&pd->s, pd->sx, pd->sy, 1);
-			job_resize(pd->job, pd->sx, pd->sy);
+			if (pd->job != NULL)
+				job_resize(pd->job, pd->sx, pd->sy);
 		} else if (pd->border_lines == BOX_LINES_NONE &&
 		    pd->border_lines != lines) {
 			screen_resize(&pd->s, pd->sx - 2, pd->sy - 2, 1);
-			job_resize(pd->job, pd->sx - 2, pd->sy - 2);
+			if (pd->job != NULL)
+				job_resize(pd->job, pd->sx - 2, pd->sy - 2);
 		}
 		pd->border_lines = lines;
 		tty_resize(&c->tty);

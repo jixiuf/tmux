@@ -621,6 +621,8 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 		else
 			n = 1;
 		wp = fs->w->active;
+		if (wp == NULL)
+			return (-1);
 		if (pane[0] == '+')
 			fs->wp = window_pane_next_by_number(fs->w, wp, n);
 		else

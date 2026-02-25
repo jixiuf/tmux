@@ -321,7 +321,7 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 			if (sb_pad < 0)
 				sb_pad = 0;
 			if (sb_pos == PANE_SCROLLBARS_LEFT) {
-				if ((int)sx - sb_w < PANE_MINIMUM) {
+				if ((int)sx - sb_w - sb_pad < PANE_MINIMUM) {
 					wp->xoff = wp->xoff +
 					    (int)sx - PANE_MINIMUM;
 					sx = PANE_MINIMUM;
@@ -450,19 +450,24 @@ layout_resize_adjust(struct window *w, struct layout_cell *lc,
 	 * until no further change is possible.
 	 */
 	while (change != 0) {
+		int	progress = 0;
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
 			if (change == 0)
 				break;
 			if (change > 0) {
 				layout_resize_adjust(w, lcchild, type, 1);
 				change--;
+				progress = 1;
 				continue;
 			}
 			if (layout_resize_check(w, lcchild, type) > 0) {
 				layout_resize_adjust(w, lcchild, type, -1);
 				change++;
+				progress = 1;
 			}
 		}
+		if (!progress)
+			break;
 	}
 }
 
@@ -503,6 +508,8 @@ layout_destroy_cell(struct window *w, struct layout_cell *lc,
 	 * replace it by that cell.
 	 */
 	lc = TAILQ_FIRST(&lcparent->cells);
+	if (lc == NULL)
+		return;
 	if (TAILQ_NEXT(lc, entry) == NULL) {
 		TAILQ_REMOVE(&lcparent->cells, lc, entry);
 
@@ -779,11 +786,13 @@ layout_new_pane_size(struct window *w, u_int previous, struct layout_cell *lc,
 	if (type == LAYOUT_LEFTRIGHT) {
 		if (lc->sx - available > min)
 			min = lc->sx - available;
-		new_size = (lc->sx * size) / previous;
+		new_size = previous > 0 ?
+		    (lc->sx * size) / previous : PANE_MINIMUM;
 	} else {
 		if (lc->sy - available > min)
 			min = lc->sy - available;
-		new_size = (lc->sy * size) / previous;
+		new_size = previous > 0 ?
+		    (lc->sy * size) / previous : PANE_MINIMUM;
 	}
 
 	/* Check against the maximum and minimum size. */

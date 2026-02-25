@@ -72,6 +72,7 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 	struct cmd_find_state	*target = cmdq_get_target(item);
 	struct client		*c = cmdq_get_client(item);
 	struct session		*s, *as, *groupwith = NULL;
+	struct winlink		*wl;
 	struct environ		*env;
 	struct options		*oo;
 	struct termios		 tio, *tiop;
@@ -312,7 +313,9 @@ cmd_new_session_exec(struct cmd *self, struct cmdq_item *item)
 		}
 		session_group_add(sg, s);
 		session_group_synchronize_to(s);
-		session_select(s, RB_MIN(winlinks, &s->windows)->idx);
+		wl = RB_MIN(winlinks, &s->windows);
+		if (wl != NULL)
+			session_select(s, wl->idx);
 	}
 	notify_session("session-created", s);
 

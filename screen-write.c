@@ -1884,8 +1884,8 @@ screen_write_collect_flush(struct screen_write_ctx *ctx, int scroll_only,
 			items++;
 
 			TAILQ_REMOVE(&cl->items, ci, entry);
-			screen_write_free_citem(ci);
 			last = ci->x;
+			screen_write_free_citem(ci);
 		}
 	}
 	s->cx = cx; s->cy = cy;

@@ -4432,6 +4432,7 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 		format_log(es, "session loop: $%u", s->id);
 		if (active != NULL &&
 		    ft->c != NULL &&
+		    ft->c->session != NULL &&
 		    s->id == ft->c->session->id)
 			use = active;
 		else

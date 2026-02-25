@@ -566,6 +566,8 @@ utf8_towc(const struct utf8_data *ud, wchar_t *wc)
 		return (UTF8_ERROR);
 	}
 	log_debug("UTF-8 %.*s is %05X", (int)ud->size, ud->data, (u_int)*wc);
+	if (*wc > 0x10ffff || (*wc >= 0xd800 && *wc <= 0xdfff))
+		return (UTF8_ERROR);
 	return (UTF8_DONE);
 }
 

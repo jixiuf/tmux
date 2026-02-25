@@ -1042,7 +1042,8 @@ input_parse_buffer(struct window_pane *wp, u_char *buf, size_t len)
 	if (len == 0)
 		return;
 
-	window_update_activity(wp->window);
+	if (wp->window != NULL)
+		window_update_activity(wp->window);
 	wp->flags |= PANE_CHANGED;
 
 	/* Flag new input while in a mode. */
@@ -2788,7 +2789,7 @@ input_dcs_dispatch(struct input_ctx *ictx)
 
 #ifdef ENABLE_SIXEL
 	w = wp->window;
-	if (buf[0] == 'q' && ictx->interm_len == 0) {
+	if (w != NULL && buf[0] == 'q' && ictx->interm_len == 0) {
 		if (input_split(ictx) != 0)
 			return (0);
 		p2 = input_get(ictx, 1, 0, 0);
@@ -2869,8 +2870,10 @@ input_exit_osc(struct input_ctx *ictx)
 		    options_get_number(wp->options, "allow-set-title") &&
 		    screen_set_title(sctx->s, p)) {
 			notify_pane("pane-title-changed", wp);
-			server_redraw_window_borders(wp->window);
-			server_status_window(wp->window);
+			if (wp->window != NULL) {
+				server_redraw_window_borders(wp->window);
+				server_status_window(wp->window);
+			}
 		}
 		break;
 	case 4:

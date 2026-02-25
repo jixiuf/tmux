@@ -472,6 +472,8 @@ control_write_output(struct client *c, struct window_pane *wp)
 	struct control_block	*cb;
 	size_t			 new_size;
 
+	if (c->session == NULL)
+		return;
 	if (winlink_find_by_window(&c->session->windows, wp->window) == NULL)
 		return;
 
@@ -1041,6 +1043,9 @@ control_check_subs_timer(__unused int fd, __unused short events, void *data)
 	struct timeval		 tv = { .tv_sec = 1 };
 	int			 have_session = 0, have_all_panes = 0;
 	int			 have_all_windows = 0;
+
+	if (s == NULL)
+		return;
 
 	log_debug("%s: timer fired", __func__);
 	evtimer_add(&cs->subs_timer, &tv);

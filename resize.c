@@ -118,7 +118,7 @@ clients_calculate_size(int type, int current, struct client *c,
 {
 	struct client		*loop;
 	struct client_window	*cw;
-	u_int			 cx, cy, n = 0;
+	u_int			 cx, cy, n = 0, sl;
 
 	/*
 	 * Start comparing with 0 for largest and UINT_MAX for smallest or
@@ -184,7 +184,9 @@ clients_calculate_size(int type, int current, struct client *c,
 			cy = cw->sy;
 		} else {
 			cx = loop->tty.sx;
-			cy = loop->tty.sy - status_line_size(loop);
+			sl = status_line_size(loop);
+			cy = loop->tty.sy > sl ?
+			    loop->tty.sy - sl : 0;
 		}
 
 		/*
