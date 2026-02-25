@@ -239,7 +239,7 @@ server_client_check_nested(struct client *c)
 	struct window_pane	*wp;
 
 	envent = environ_find(c->environ, "TMUX");
-	if (envent == NULL || *envent->value == '\0')
+	if (envent == NULL || envent->value == NULL || *envent->value == '\0')
 		return (0);
 
 	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
@@ -3097,7 +3097,7 @@ server_client_reset_state(struct client *c)
 		int new_kitty = s->kitty_kbd.flags[s->kitty_kbd.idx];
 		if (new_kitty != tty->kitty_state) {
 			char seq[32];
-			xsnprintf(seq, sizeof seq, "\033[=%du", new_kitty);
+			xsnprintf(seq, sizeof seq, "\033[=%d;1u", new_kitty);
 			tty_puts(tty, seq);
 			tty->kitty_state = new_kitty;
 		}
