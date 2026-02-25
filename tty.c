@@ -78,7 +78,7 @@ static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 	((ctx)->xoff == 0 && (ctx)->sx >= (tty)->sx)
 
 #define TTY_BLOCK_INTERVAL (100000 /* 100 milliseconds */)
-#define TTY_BLOCK_START(tty) (1 + ((tty)->sx * (tty)->sy) * 8)
+#define TTY_BLOCK_START(tty) (1 + ((size_t)(tty)->sx * (tty)->sy) * 8)
 #define TTY_BLOCK_STOP(tty) (1 + ((tty)->sx * (tty)->sy) / 8)
 
 #define TTY_QUERY_TIMEOUT 5
@@ -2836,7 +2836,7 @@ tty_check_bg(struct tty *tty, struct colour_palette *palette,
 }
 
 static void
-tty_check_us(__unused struct tty *tty, struct colour_palette *palette,
+tty_check_us(struct tty *tty, struct colour_palette *palette,
     struct grid_cell *gc)
 {
 	int	c;
@@ -2867,7 +2867,7 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 	 * reset because some terminals do not clear bright correctly.
 	 */
 	if (tty->cell.fg >= 90 &&
-	    tty->cell.bg <= 97 &&
+	    tty->cell.fg <= 97 &&
 	    (gc->fg < 90 || gc->fg > 97))
 		tty_reset(tty);
 
@@ -2970,6 +2970,8 @@ tty_colours_us(struct tty *tty, const struct grid_cell *gc)
 	else if (tty_term_has(tty->term, TTYC_SETAL) &&
 	    tty_term_has(tty->term, TTYC_RGB))
 		tty_putcode_i(tty, TTYC_SETAL, c);
+	else
+		return;
 
 save:
 	/* Save the new values in the terminal current cell. */

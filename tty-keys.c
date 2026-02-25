@@ -77,10 +77,10 @@ struct tty_key {
 
 /* kitty : CSI 1; modifier [~ABCDEFHPQRS] */
 static const key_code kitty_ascii_keys[] ={
-    KEYC_UP,                    /* A */
-    KEYC_DOWN,                   /* B */
-    KEYC_RIGHT,                  /* C */
-    KEYC_LEFT,                   /* D */
+    KEYC_UP|KEYC_CURSOR,                    /* A */
+    KEYC_DOWN|KEYC_CURSOR,                   /* B */
+    KEYC_RIGHT|KEYC_CURSOR,                  /* C */
+    KEYC_LEFT|KEYC_CURSOR,                   /* D */
     KEYC_KP_BEGIN,                /* E */
     KEYC_END,                     /* F */
     0,
@@ -820,7 +820,6 @@ tty_keys_next(struct tty *tty)
 	case -1:	/* no, or not valid */
 		break;
 	case 1:		/* partial */
-		session_theme_changed(c->session);
 		goto partial_key;
 	}
 
@@ -1817,7 +1816,8 @@ tty_keys_device_attributes(struct tty *tty, const char *buf, size_t len,
 	struct client	*c = tty->client;
 	int		*features = &c->term_features;
 	u_int		 i, n = 0;
-	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next ,final;
+	char		 tmp[128], *endptr, *cp, *next ,final;
+	u_int		 p[32] = { 0 };
 
 	*size = 0;
 
@@ -1921,7 +1921,8 @@ tty_keys_device_attributes2(struct tty *tty, const char *buf, size_t len,
 	struct client	*c = tty->client;
 	int		*features = &c->term_features;
 	u_int		 i, n = 0;
-	char		 tmp[128], *endptr, p[32] = { 0 }, *cp, *next;
+	char		 tmp[128], *endptr, *cp, *next;
+	u_int		 p[32] = { 0 };
 
 	*size = 0;
 	if (tty->flags & TTY_HAVEDA2)

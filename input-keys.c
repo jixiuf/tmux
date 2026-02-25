@@ -902,10 +902,6 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 			  key_string_lookup_key(key, 1) );
 
 
-	/* Mouse keys need a pane. */
-	if (KEYC_IS_MOUSE(key))
-		return (0);
-
 	/* Literal keys go as themselves (can't be more than eight bits). */
 	if (key & KEYC_LITERAL) {
 		ud.data[0] = (u_char)key;
