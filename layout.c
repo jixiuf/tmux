@@ -308,6 +308,8 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 		sy = lc->sy;
 
 		if (layout_add_horizontal_border(w, lc, status)) {
+			if (sy == 0)
+				continue;
 			if (status == PANE_STATUS_TOP)
 				wp->yoff++;
 			sy--;
@@ -899,14 +901,20 @@ layout_resize_child_cells(struct window *w, struct layout_cell *lc)
 		} else {
 			lcchild->sx = layout_new_pane_size(w, previous, lcchild,
 			    lc->type, lc->sx, count - idx, available);
-			available -= (lcchild->sx + 1);
+			if (available > lcchild->sx + 1)
+				available -= (lcchild->sx + 1);
+			else
+				available = 0;
 		}
 		if (lc->type == LAYOUT_LEFTRIGHT)
 			lcchild->sy = lc->sy;
 		else {
 			lcchild->sy = layout_new_pane_size(w, previous, lcchild,
 			    lc->type, lc->sy, count - idx, available);
-			available -= (lcchild->sy + 1);
+			if (available > lcchild->sy + 1)
+				available -= (lcchild->sy + 1);
+			else
+				available = 0;
 		}
 		layout_resize_child_cells(w, lcchild);
 		idx++;
@@ -1126,9 +1134,11 @@ layout_spread_cell(struct window *w, struct layout_cell *parent)
 	if (parent->type == LAYOUT_LEFTRIGHT)
 		size = parent->sx;
 	else if (parent->type == LAYOUT_TOPBOTTOM) {
-		if (layout_add_horizontal_border(w, parent, status))
+		if (layout_add_horizontal_border(w, parent, status)) {
+			if (parent->sy == 0)
+				return (0);
 			size = parent->sy - 1;
-		else
+		} else
 			size = parent->sy;
 	} else
 		return (0);

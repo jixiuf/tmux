@@ -680,6 +680,8 @@ args_get(struct args *args, u_char flag)
 		return (NULL);
 	if (TAILQ_EMPTY(&entry->values))
 		return (NULL);
+	if (TAILQ_LAST(&entry->values, args_values)->type != ARGS_STRING)
+		return (NULL);
 	return (TAILQ_LAST(&entry->values, args_values)->string);
 }
 
@@ -976,11 +978,17 @@ args_percentage(struct args *args, u_char flag, long long minval,
 		*cause = xstrdup("empty");
 		return (0);
 	}
+	if (TAILQ_LAST(&entry->values, args_values)->type != ARGS_STRING) {
+		*cause = xstrdup("not a string");
+		return (0);
+	}
 	value = TAILQ_LAST(&entry->values, args_values)->string;
 	return (args_string_percentage(value, minval, maxval, curval, cause));
 }
 
-/* Convert a string to a number which may be a percentage. */
+/*
+ * Convert a string to a number which may be a percentage.
+ */
 long long
 args_string_percentage(const char *value, long long minval, long long maxval,
     long long curval, char **cause)
@@ -1044,6 +1052,10 @@ args_percentage_and_expand(struct args *args, u_char flag, long long minval,
 		*cause = xstrdup("empty");
 		return (0);
 	}
+	if (TAILQ_LAST(&entry->values, args_values)->type != ARGS_STRING) {
+		*cause = xstrdup("not a string");
+		return (0);
+	}
 	value = TAILQ_LAST(&entry->values, args_values)->string;
 	return (args_string_percentage_and_expand(value, minval, maxval, curval,
 		    item, cause));
@@ -1061,6 +1073,10 @@ args_string_percentage_and_expand(const char *value, long long minval,
 	size_t		 valuelen = strlen(value);
 	char		*copy, *f;
 
+	if (valuelen == 0) {
+		*cause = xstrdup("empty");
+		return (0);
+	}
 	if (value[valuelen - 1] == '%') {
 		copy = xstrdup(value);
 		copy[valuelen - 1] = '\0';
