@@ -556,6 +556,7 @@ file_write_callback(__unused struct bufferevent *bev, void *arg)
 		bufferevent_free(cf->event);
 		close(cf->fd);
 		RB_REMOVE(client_files, cf->tree, cf);
+		cf->tree = NULL;
 		file_free(cf);
 	}
 }
@@ -578,8 +579,11 @@ file_write_open(struct client_files *files, struct tmuxpeer *peer,
 		fatalx("bad MSG_WRITE_OPEN size");
 	if (msglen == sizeof *msg)
 		path = "-";
-	else
+	else {
 		path = (const char *)(msg + 1);
+		if (((const char *)imsg->data)[msglen - 1] != '\0')
+			fatalx("bad MSG_WRITE_OPEN path");
+	}
 	log_debug("open write file %d %s", msg->stream, path);
 
 	find.stream = msg->stream;
@@ -590,6 +594,7 @@ file_write_open(struct client_files *files, struct tmuxpeer *peer,
 	cf = file_create_with_peer(peer, files, msg->stream, cb, cbdata);
 	if (cf->closed) {
 		error = EBADF;
+		file_free(cf);
 		goto reply;
 	}
 
@@ -665,6 +670,7 @@ file_write_close(struct client_files *files, struct imsg *imsg)
 		if (cf->fd != -1)
 			close(cf->fd);
 		RB_REMOVE(client_files, files, cf);
+		cf->tree = NULL;
 		file_free(cf);
 	}
 }
@@ -686,6 +692,7 @@ file_read_error_callback(__unused struct bufferevent *bev, __unused short what,
 	bufferevent_free(cf->event);
 	close(cf->fd);
 	RB_REMOVE(client_files, cf->tree, cf);
+	cf->tree = NULL;
 	file_free(cf);
 }
 
@@ -739,8 +746,11 @@ file_read_open(struct client_files *files, struct tmuxpeer *peer,
 		fatalx("bad MSG_READ_OPEN size");
 	if (msglen == sizeof *msg)
 		path = "-";
-	else
+	else {
 		path = (const char *)(msg + 1);
+		if (((const char *)imsg->data)[msglen - 1] != '\0')
+			fatalx("bad MSG_READ_OPEN path");
+	}
 	log_debug("open read file %d %s", msg->stream, path);
 
 	find.stream = msg->stream;
@@ -751,6 +761,7 @@ file_read_open(struct client_files *files, struct tmuxpeer *peer,
 	cf = file_create_with_peer(peer, files, msg->stream, cb, cbdata);
 	if (cf->closed) {
 		error = EBADF;
+		file_free(cf);
 		goto reply;
 	}
 

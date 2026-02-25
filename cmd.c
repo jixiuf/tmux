@@ -303,6 +303,8 @@ cmd_unpack_argv(char *buf, size_t len, int argc, char ***argv)
 
 	if (argc == 0)
 		return (0);
+	if (len == 0)
+		return (-1);
 	*argv = xcalloc(argc, sizeof **argv);
 
 	buf[len - 1] = '\0';

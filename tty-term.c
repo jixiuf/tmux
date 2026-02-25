@@ -406,6 +406,8 @@ tty_term_apply(struct tty_term *term, const char *capabilities, int quiet)
 			code = &term->codes[i];
 
 			if (remove) {
+				if (code->type == TTYCODE_STRING)
+					free(code->value.string);
 				code->type = TTYCODE_NONE;
 				continue;
 			}
@@ -551,6 +553,8 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 	for (i = 0; i < ncaps; i++) {
 		namelen = strcspn(caps[i], "=");
 		if (namelen == 0)
+			continue;
+		if (caps[i][namelen] != '=')
 			continue;
 		value = caps[i] + namelen + 1;
 

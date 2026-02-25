@@ -90,6 +90,12 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 	else
 		s = format_single(qitem, item->name, c, NULL, NULL, NULL);
 	if (*s == '\0') { /* no item if empty after format expanded */
+		free(s);
+		menu->count--;
+		return;
+	}
+	if (c->tty.sx < 4) {
+		free(s);
 		menu->count--;
 		return;
 	}
@@ -369,6 +375,8 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 	case KEYC_BTAB:
 	case KEYC_UP:
 	case 'k':
+		if (md->menu->count == 0)
+			break;
 		if (old == -1)
 			old = 0;
 		do {
@@ -392,6 +400,8 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 		/* FALLTHROUGH */
 	case KEYC_DOWN:
 	case 'j':
+		if (md->menu->count == 0)
+			break;
 		if (old == -1)
 			old = 0;
 		do {
@@ -405,6 +415,8 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 		return (0);
 	case KEYC_PPAGE:
 	case 'b'|KEYC_CTRL:
+		if (md->menu->count == 0)
+			break;
 		if (md->choice < 6)
 			md->choice = 0;
 		else {
@@ -422,6 +434,8 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 		c->flags |= CLIENT_REDRAWOVERLAY;
 		break;
 	case KEYC_NPAGE:
+		if (md->menu->count == 0)
+			break;
 		if (md->choice > count - 6) {
 			md->choice = count - 1;
 			name = menu->items[md->choice].name;
@@ -445,6 +459,8 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 		break;
 	case 'g':
 	case KEYC_HOME:
+		if (md->menu->count == 0)
+			break;
 		md->choice = 0;
 		name = menu->items[md->choice].name;
 		while ((name == NULL || *name == '-') &&
@@ -456,6 +472,8 @@ menu_key_cb(struct client *c, void *data, struct key_event *event)
 		break;
 	case 'G':
 	case KEYC_END:
+		if (md->menu->count == 0)
+			break;
 		md->choice = count - 1;
 		name = menu->items[md->choice].name;
 		while ((name == NULL || *name == '-') && md->choice > 0) {
@@ -490,6 +508,9 @@ chosen:
 	    md->cb = NULL;
 	    return (1);
 	}
+
+	if (item->command == NULL)
+		return (1);
 
 	if (md->item != NULL)
 		event = cmdq_get_event(md->item);
@@ -550,6 +571,9 @@ menu_prepare(struct menu *menu, int flags, int starting_choice,
 	int			 choice;
 	const char		*name;
 	struct options		*o;
+
+	if (menu->count == 0)
+		return (NULL);
 
 	if (c->session != NULL && c->session->curw != NULL)
 		o = c->session->curw->window->options;
