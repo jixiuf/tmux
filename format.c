@@ -2360,7 +2360,7 @@ format_cb_session_activity_flag(struct format_tree *ft)
 
 	if (ft->s != NULL) {
 		RB_FOREACH(wl, winlinks, &ft->s->windows) {
-			if (ft->wl->flags & WINLINK_ACTIVITY)
+			if (wl->flags & WINLINK_ACTIVITY)
 				return (xstrdup("1"));
 			return (xstrdup("0"));
 		}
@@ -2392,7 +2392,7 @@ format_cb_session_silence_flag(struct format_tree *ft)
 
 	if (ft->s != NULL) {
 		RB_FOREACH(wl, winlinks, &ft->s->windows) {
-			if (ft->wl->flags & WINLINK_SILENCE)
+			if (wl->flags & WINLINK_SILENCE)
 				return (xstrdup("1"));
 			return (xstrdup("0"));
 		}

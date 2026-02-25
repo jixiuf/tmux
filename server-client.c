@@ -2644,7 +2644,7 @@ forward_key:
 paste_key:
 	if (c->flags & CLIENT_READONLY)
 		goto out;
-	if (event->buf != NULL)
+	if (wp != NULL && event->buf != NULL)
 		window_pane_paste(wp, key, event->buf, event->len);
 	key = KEYC_NONE;
 	goto out;
@@ -4059,6 +4059,8 @@ server_client_print(struct client *c, int parse, struct evbuffer *evb)
 	}
 
 	wp = server_client_get_pane(c);
+	if (wp == NULL)
+		goto out;
 	wme = TAILQ_FIRST(&wp->modes);
 	if (wme == NULL || wme->mode != &window_view_mode)
 		window_pane_set_mode(wp, NULL, &window_view_mode, NULL, NULL);

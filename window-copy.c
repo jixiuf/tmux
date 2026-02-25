@@ -574,7 +574,7 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 		data->backing_written = 1;
 	old_cy = backing->cy;
 	if (parse) {
-		vasprintf(&text, fmt, ap);
+		xvasprintf(&text, fmt, ap);
 		input_parse_screen(data->ictx, backing, window_copy_init_ctx_cb,
 		    data, text, strlen(text));
 		free(text);
@@ -4185,6 +4185,8 @@ window_copy_search_mark_at(struct window_copy_mode_data *data, u_int px,
 		return (-1);
 	if (py > gd->hsize - data->oy + gd->sy - 1)
 		return (-1);
+	if (px >= gd->sx)
+		return (-1);
 	*at = ((py - (gd->hsize - data->oy)) * gd->sx) + px;
 	return (0);
 }
@@ -4291,11 +4293,11 @@ again:
 			if (regex) {
 				found = window_copy_search_lr_regex(gd,
 				    &px, &width, py, px, sx, &reg);
+				if (!found)
+					break;
 				grid_get_cell(gd, px + width - 1, py, &gc);
 				if (gc.data.width > 2)
 					width += gc.data.width - 1;
-				if (!found)
-					break;
 			} else {
 				found = window_copy_search_lr(gd, ssp->grid,
 				    &px, py, px, sx, cis);
