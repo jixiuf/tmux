@@ -200,7 +200,11 @@ environ_update(struct options *oo, struct environ *src, struct environ *dst)
 		found = 0;
 		RB_FOREACH_SAFE(envent, environ, src, envent1) {
 			if (fnmatch(ov->string, envent->name, 0) == 0) {
-				environ_set(dst, envent->name, 0, "%s", envent->value);
+				if (envent->value != NULL)
+					environ_set(dst, envent->name, 0,
+					    "%s", envent->value);
+				else
+					environ_clear(dst, envent->name);
 				found = 1;
 			}
 		}
