@@ -138,7 +138,7 @@ winlink_find_by_window_id(struct winlinks *wwl, u_int id)
 	struct winlink *wl;
 
 	RB_FOREACH(wl, winlinks, wwl) {
-		if (wl->window->id == id)
+		if (wl->window != NULL && wl->window->id == id)
 			return (wl);
 	}
 	return (NULL);
@@ -739,7 +739,7 @@ window_pop_zoom(struct window *w)
 {
 	log_debug("%s: @%u %d", __func__, w->id,
 	    !!(w->flags & WINDOW_WASZOOMED));
-	if (w->flags & WINDOW_WASZOOMED)
+	if (w->flags & WINDOW_WASZOOMED && w->active != NULL)
 		return (window_zoom(w->active) == 0);
 	return (0);
 }
@@ -908,9 +908,9 @@ window_printable_flags(struct winlink *wl, int escape)
 		flags[pos++] = '!';
 	if (wl->flags & WINLINK_SILENCE)
 		flags[pos++] = '~';
-	if (wl == s->curw)
+	if (s != NULL && wl == s->curw)
 		flags[pos++] = '*';
-	if (wl == TAILQ_FIRST(&s->lastw))
+	if (s != NULL && wl == TAILQ_FIRST(&s->lastw))
 		flags[pos++] = '-';
 	if (server_check_marked() && wl == marked_pane.wl)
 		flags[pos++] = 'M';
@@ -1154,8 +1154,8 @@ window_pane_set_mode(struct window_pane *wp, struct window_pane *swp,
 	wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR|PANE_CHANGED);
 	layout_fix_panes(w, NULL);
 
-	server_redraw_window_borders(wp->window);
-	server_status_window(wp->window);
+	server_redraw_window_borders(w);
+	server_status_window(w);
 	notify_pane("pane-mode-changed", wp);
 
 	return (0);
@@ -1190,8 +1190,8 @@ window_pane_reset_mode(struct window_pane *wp)
 	wp->flags |= (PANE_REDRAW|PANE_REDRAWSCROLLBAR|PANE_CHANGED);
 	layout_fix_panes(w, NULL);
 
-	server_redraw_window_borders(wp->window);
-	server_status_window(wp->window);
+	server_redraw_window_borders(w);
+	server_status_window(w);
 	notify_pane("pane-mode-changed", wp);
 }
 

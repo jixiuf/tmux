@@ -3342,6 +3342,9 @@ window_copy_scroll_to(struct window_mode_entry *wme, u_int px, u_int py,
 	struct grid			*gd = data->backing->grid;
 	u_int				 offset, gap;
 
+	if (data->oy > gd->hsize)
+		data->oy = gd->hsize;
+
 	data->cx = px;
 
 	if (py >= gd->hsize - data->oy && py < gd->hsize - data->oy + gd->sy)
@@ -3358,6 +3361,8 @@ window_copy_scroll_to(struct window_mode_entry *wme, u_int px, u_int py,
 			offset = py + gap - gd->sy;
 			data->cy = py - offset;
 		}
+		if (offset > gd->hsize)
+			offset = gd->hsize;
 		data->oy = gd->hsize - offset;
 	}
 
@@ -4194,7 +4199,9 @@ window_copy_search_mark_at(struct window_copy_mode_data *data, u_int px,
 static u_int
 window_copy_clip_width(u_int width, u_int b, u_int sx, u_int sy)
 {
-	return ((b + width > sx * sy) ? (sx * sy) - b : width);
+	uint64_t area = (uint64_t)sx * sy;
+
+	return (((uint64_t)b + width > area) ? (u_int)(area - b) : width);
 }
 
 static u_int
@@ -4204,16 +4211,24 @@ window_copy_search_mark_match(struct window_copy_mode_data *data, u_int px,
 	struct grid		*gd = data->backing->grid;
 	struct grid_cell	 gc;
 	u_int			 i, b, w = width, sx = gd->sx, sy = gd->sy;
+	uint64_t		 smark_sz = (uint64_t)sx * sy;
 
 	if (window_copy_search_mark_at(data, px, py, &b) == 0) {
 		width = window_copy_clip_width(width, b, sx, sy);
 		w = width;
 		for (i = b; i < b + w; i++) {
+			if (i >= smark_sz)
+				break;
 			if (!regex) {
 				grid_get_cell(gd, px + (i - b), py, &gc);
-				if (gc.flags & GRID_FLAG_TAB)
-					w += gc.data.width - 1;
-				w = window_copy_clip_width(w, b, sx, sy);
+				if (gc.flags & GRID_FLAG_TAB) {
+					if (gc.data.width > 1)
+						w += gc.data.width - 1;
+					w = window_copy_clip_width(w, b,
+					    sx, sy);
+					if (i >= b + w)
+						break;
+				}
 			}
 			if (data->searchmark[i] != 0)
 				continue;
@@ -5974,7 +5989,10 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 			window_copy_update_cursor(wme, x, y);
 			window_copy_cursor_previous_word_pos(wme,
 			    data->separators, &x, &y);
-			y -= screen_hsize(data->backing) - data->oy;
+			if (y >= screen_hsize(data->backing) - data->oy)
+				y -= screen_hsize(data->backing) - data->oy;
+			else
+				y = 0;
 		}
 		window_copy_update_cursor(wme, x, y);
 		break;
@@ -6115,6 +6133,8 @@ window_copy_acquire_cursor_down(struct window_mode_entry *wme, u_int hsize,
 {
 	u_int	cy, yy, ny, nd;
 
+	if (py + oy < hsize)
+		return;
 	cy = py - hsize + oy;
 	yy = sy - 1;
 	if (cy > yy) {
@@ -6123,7 +6143,7 @@ window_copy_acquire_cursor_down(struct window_mode_entry *wme, u_int hsize,
 		nd = 1;
 	} else {
 		ny = 0;
-		nd = cy - oldy + 1;
+		nd = (cy >= oldy) ? cy - oldy + 1 : 1;
 	}
 	while (ny > 0) {
 	  window_copy_cursor_down(wme, 1);

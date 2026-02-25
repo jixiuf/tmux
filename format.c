@@ -942,7 +942,8 @@ format_cb_history_all_bytes(struct format_tree *ft)
 	struct window_pane	*wp = ft->wp;
 	struct grid		*gd;
 	struct grid_line	*gl;
-	u_int			 i, lines, cells = 0, extended_cells = 0;
+	u_int			 i, lines;
+	size_t			 cells = 0, extended_cells = 0;
 	char			*value;
 
 	if (wp == NULL)
@@ -956,7 +957,7 @@ format_cb_history_all_bytes(struct format_tree *ft)
 		extended_cells += gl->extdsize;
 	}
 
-	xasprintf(&value, "%u,%zu,%u,%zu,%u,%zu", lines,
+	xasprintf(&value, "%u,%zu,%zu,%zu,%zu,%zu", lines,
 	    lines * sizeof *gl, cells, cells * sizeof *gl->celldata,
 	    extended_cells, extended_cells * sizeof *gl->extddata);
 	return (value);
@@ -2582,6 +2583,8 @@ format_cb_last_window_index(struct format_tree *ft)
 
 	if (ft->s != NULL) {
 		wl = RB_MAX(winlinks, &ft->s->windows);
+		if (wl == NULL)
+			return (NULL);
 		return (format_printf("%u", wl->idx));
 	}
 	return (NULL);
@@ -4028,7 +4031,7 @@ format_unescape(const char *s)
 			*cp++ = *++s;
 			continue;
 		}
-		if (*s == '}')
+		if (*s == '}' && brackets > 0)
 			brackets--;
 		*cp++ = *s;
 	}
@@ -4052,7 +4055,7 @@ format_strip(const char *s)
 				*cp++ = *s;
 			continue;
 		}
-		if (*s == '}')
+		if (*s == '}' && brackets > 0)
 			brackets--;
 		*cp++ = *s;
 	}
@@ -4075,7 +4078,7 @@ format_skip(const char *s, const char *end)
 			s++;
 			continue;
 		}
-		if (*s == '}')
+		if (*s == '}' && brackets > 0)
 			brackets--;
 		if (strchr(end, *s) != NULL && brackets == 0)
 			break;
@@ -4453,6 +4456,9 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 		free(expanded);
 	}
 
+	free(active);
+	free(all);
+
 	return (value);
 }
 
@@ -4699,7 +4705,7 @@ format_replace_expression(struct format_modifier *mexp,
 
 	/* The third argument may be precision. */
 	if (argc >= 3) {
-		prec = strtonum(mexp->argv[2], INT_MIN, INT_MAX, &errstr);
+		prec = strtonum(mexp->argv[2], 0, 100, &errstr);
 		if (errstr != NULL) {
 			format_log(es, "expression precision %s: %s", errstr,
 			    mexp->argv[2]);
@@ -4725,6 +4731,10 @@ format_replace_expression(struct format_modifier *mexp,
 	}
 
 	if (!use_fp) {
+		if (!isfinite(mleft) || !isfinite(mright)) {
+			format_log(es, "expression operand is not finite");
+			goto fail;
+		}
 		mleft = (long long)mleft;
 		mright = (long long)mright;
 	}
@@ -4742,9 +4752,17 @@ format_replace_expression(struct format_modifier *mexp,
 		result = mleft * mright;
 		break;
 	case DIVIDE:
+		if (mright == 0) {
+			format_log(es, "expression division by zero");
+			goto fail;
+		}
 		result = mleft / mright;
 		break;
 	case MODULUS:
+		if (mright == 0) {
+			format_log(es, "expression modulus by zero");
+			goto fail;
+		}
 		result = fmod(mleft, mright);
 		break;
 	case EQUAL:
