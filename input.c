@@ -2097,11 +2097,17 @@ input_csi_dispatch_kitk_push(struct input_ctx *ictx)
 	uint8_t idx;
 	int flags;
 	flags = input_get(ictx, 0, 0, 0);
+	if (flags == -1)
+		return;
 	idx = ictx->ctx.s->kitty_kbd.idx;
 
 	if (idx + 1 >= nitems(ictx->ctx.s->kitty_kbd.flags)) {
-		/* Stack full, evict oldest by wrapping around */
-		idx = 0;
+		/* Stack full, evict oldest by shifting everything down */
+		memmove(&ictx->ctx.s->kitty_kbd.flags[0],
+		    &ictx->ctx.s->kitty_kbd.flags[1],
+		    (nitems(ictx->ctx.s->kitty_kbd.flags) - 1) *
+		    sizeof(ictx->ctx.s->kitty_kbd.flags[0]));
+		/* idx stays at top */
 	} else
 		idx++;
 
@@ -2206,6 +2212,8 @@ input_csi_dispatch_kitk_set(struct input_ctx *ictx)
 	/* CSI = flags ; mode u */
 	flag_set = input_get(ictx, 0, 0, 0);
 	mode = input_get(ictx, 1, 1, 1);
+	if (flag_set == -1)
+		return;
 	s = ictx->ctx.s;
 	idx = s->kitty_kbd.idx;
 
@@ -2754,7 +2762,7 @@ input_handle_decrqss(struct input_ctx *ictx)
 	log_debug("%s: DECRQSS cursor -> Ps=%d (cstyle=%d mode=%#x)", __func__,
 	    ps, s->cstyle, s->mode);
 
-	input_reply(ictx, 1, "\033P1$r q%d q\033\\", ps);
+	input_reply(ictx, 1, "\033P1$r%d q\033\\", ps);
 	return (0);
 
 not_recognized:
