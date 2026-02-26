@@ -357,6 +357,8 @@ window_client_key(struct window_mode_entry *wme, struct client *c,
 	case 'x':
 	case 'z':
 		item = mode_tree_get_current(mtd);
+		if (item == NULL)
+			break;
 		window_client_do_detach(data, item, c, key);
 		mode_tree_build(mtd);
 		break;
@@ -368,6 +370,8 @@ window_client_key(struct window_mode_entry *wme, struct client *c,
 		break;
 	case '\r':
 		item = mode_tree_get_current(mtd);
+		if (item == NULL)
+			break;
 		mode_tree_run_command(c, NULL, data->command, item->c->ttyname);
 		finished = 1;
 		break;

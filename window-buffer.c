@@ -553,6 +553,8 @@ window_buffer_key(struct window_mode_entry *wme, struct client *c,
 	case 'p':
 	case '\r':
 		item = mode_tree_get_current(mtd);
+		if (item == NULL)
+			break;
 		window_buffer_do_paste(data, item, c, key);
 		finished = 1;
 		break;

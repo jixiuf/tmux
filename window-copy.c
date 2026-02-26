@@ -596,7 +596,8 @@ window_copy_vadd(struct window_pane *wp, int parse, const char *fmt, va_list ap)
 		window_copy_redraw_lines(wme, 0, 1);
 
 	/* Write the new lines. */
-	window_copy_redraw_lines(wme, old_cy, backing->cy - old_cy + 1);
+	if (backing->cy >= old_cy)
+		window_copy_redraw_lines(wme, old_cy, backing->cy - old_cy + 1);
 
 	screen_write_stop(&ctx);
 }
@@ -3951,7 +3952,7 @@ window_copy_search_back_overlap(struct grid *gd, regex_t *preg, u_int *ppx,
 	endy = oldendy;
 	px = *ppx;
 	py = *ppy;
-	while (found && px == 0 && py - 1 > endline &&
+	while (found && px == 0 && py > 1 && py - 1 > endline &&
 	       grid_get_line(gd, py - 2)->flags & GRID_LINE_WRAPPED &&
 	       endx == oldendx && endy == oldendy) {
 		py--;
@@ -4349,6 +4350,8 @@ window_copy_search_marks(struct window_mode_entry *wme, struct screen *ssp,
 			cflags |= REG_ICASE;
 		if (regcomp(&reg, sbuf, cflags) != 0) {
 			free(sbuf);
+			if (ssp == &ss)
+				screen_free(&ss);
 			return (0);
 		}
 		free(sbuf);
@@ -5463,6 +5466,8 @@ window_copy_other_end(struct window_mode_entry *wme)
 	data->cx = selx;
 
 	hsize = screen_hsize(data->backing);
+	if (data->oy > hsize)
+		data->oy = hsize;
 	if (sely < hsize - data->oy) { /* above */
 		data->oy = hsize - sely;
 		data->cy = 0;
