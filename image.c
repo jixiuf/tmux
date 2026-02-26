@@ -86,6 +86,11 @@ image_fallback(char **ret, u_int sx, u_int sy)
 	char	*buf, *label;
 	u_int	 py, size, lsize;
 
+	if (sx == 0 || sy == 0) {
+		*ret = xstrdup("");
+		return;
+	}
+
 	/* Allocate first line. */
 	lsize = xasprintf(&label, "SIXEL IMAGE (%ux%u)\r\n", sx, sy) + 1;
 	if (sx < lsize - 3)
@@ -209,6 +214,11 @@ image_scroll_up(struct screen *s, u_int lines)
 		image_log(im, __func__, "3, lines=%u, sy=%u", lines, sy);
 
 		new = sixel_scale(im->data, 0, 0, 0, im->sy - sy, sx, sy, 1);
+		if (new == NULL) {
+			image_free(im);
+			redraw = 1;
+			continue;
+		}
 		sixel_free(im->data);
 		im->data = new;
 

@@ -146,9 +146,10 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	if (sx < len * 6 || sy < 5) {
 		tty_attributes(tty, &fgc, &grid_default_cell, NULL, NULL);
 		if (sx >= len + llen + 1) {
+			u_int olen = len;
 			len += llen + 1;
 			tty_cursor(tty, xoff + px - len / 2, yoff + py);
-			tty_putn(tty, buf, len,	 len);
+			tty_putn(tty, buf, olen, olen);
 			tty_putn(tty, " ", 1, 1);
 			tty_putn(tty, lbuf, llen, llen);
 		} else {

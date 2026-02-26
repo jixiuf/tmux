@@ -238,7 +238,7 @@ environ_log(struct environ *env, const char *fmt, ...)
 	char			*prefix;
 
 	va_start(ap, fmt);
-	vasprintf(&prefix, fmt, ap);
+	xvasprintf(&prefix, fmt, ap);
 	va_end(ap);
 
 	RB_FOREACH(envent, environ, env) {
