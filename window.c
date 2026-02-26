@@ -640,7 +640,7 @@ window_find_string(struct window *w, const char *s)
 	status = options_get_number(w->options, "pane-border-status");
 	if (status == PANE_STATUS_TOP)
 		top++;
-	else if (status == PANE_STATUS_BOTTOM)
+	else if (status == PANE_STATUS_BOTTOM && bottom > 0)
 		bottom--;
 
 	if (strcasecmp(s, "top") == 0)

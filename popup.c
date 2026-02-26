@@ -886,6 +886,20 @@ popup_display(int flags, enum box_lines lines, struct cmdq_item *item, u_int px,
 	pd->job = job_run(shellcmd, argc, argv, env, s, cwd,
 	    popup_job_update_cb, popup_job_complete_cb, NULL, pd,
 	    JOB_NOWAIT|JOB_PTY|JOB_KEEPWRITE|JOB_DEFAULTSHELL, jx, jy);
+	if (pd->job == NULL) {
+		if (pd->cb != NULL)
+			pd->cb(pd->status, pd->arg);
+		if (pd->item != NULL)
+			cmdq_continue(pd->item);
+		server_client_unref(pd->c);
+		screen_free(&pd->s);
+		colour_palette_free(&pd->palette);
+		free(pd->title);
+		free(pd->style);
+		free(pd->border_style);
+		free(pd);
+		return (-1);
+	}
 	pd->ictx = input_init(NULL, job_get_event(pd->job), &pd->palette, c);
 
 	server_client_set_overlay(c, 0, popup_check_cb, popup_mode_cb,

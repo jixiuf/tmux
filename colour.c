@@ -1017,8 +1017,10 @@ colour_parseX11(const char *p)
 
 	if ((len == 12 && sscanf(p, "rgb:%02x/%02x/%02x", &r, &g, &b) == 3) ||
 	    (len == 7 && sscanf(p, "#%02x%02x%02x", &r, &g, &b) == 3) ||
-	    sscanf(p, "%d,%d,%d", &r, &g, &b) == 3)
-		colour = colour_join_rgb(r, g, b);
+	    sscanf(p, "%u,%u,%u", &r, &g, &b) == 3) {
+		if (r <= 255 && g <= 255 && b <= 255)
+			colour = colour_join_rgb(r, g, b);
+	}
 	else if ((len == 18 &&
 	    sscanf(p, "rgb:%04x/%04x/%04x", &r, &g, &b) == 3) ||
 	    (len == 13 && sscanf(p, "#%04x%04x%04x", &r, &g, &b) == 3))
@@ -1089,9 +1091,11 @@ colour_palette_get(struct colour_palette *p, int n)
 
 	if (n >= 90 && n <= 97)
 		n = 8 + n - 90;
-	else if (n & COLOUR_FLAG_256)
+	else if (n & COLOUR_FLAG_256) {
 		n &= ~COLOUR_FLAG_256;
-	else if (n >= 8)
+		if (n < 0 || n > 255)
+			return (-1);
+	} else if (n >= 8)
 		return (-1);
 
 	if (p->palette != NULL && p->palette[n] != -1)

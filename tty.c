@@ -485,7 +485,8 @@ tty_stop_tty(struct tty *tty)
 	if (tcsetattr(c->fd, TCSANOW, &tty->tio) == -1)
 		return;
 
-	tty_raw(tty, tty_term_string_ii(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
+	tty_raw(tty, tty_term_string_ii(tty->term, TTYC_CSR, 0,
+	    ws.ws_row > 0 ? ws.ws_row - 1 : 0));
 	if (tty_acs_needed(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
@@ -1197,7 +1198,7 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*rx = nx;
 	} else if (xoff < ctx->wox && xoff + nx > ctx->wox + ctx->wsx) {
 		/* Both left and right not visible. */
-		*i = ctx->wox;
+		*i = ctx->wox - (ctx->xoff + px);
 		*x = 0;
 		*rx = ctx->wsx;
 	} else if (xoff < ctx->wox) {
@@ -1294,7 +1295,7 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*rx = nx;
 	} else if (xoff < ctx->wox && xoff + nx > ctx->wox + ctx->wsx) {
 		/* Both left and right not visible. */
-		*i = ctx->wox;
+		*i = ctx->wox - (ctx->xoff + px);
 		*x = 0;
 		*rx = ctx->wsx;
 	} else if (xoff < ctx->wox) {
@@ -1318,7 +1319,7 @@ tty_clamp_area(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 		*ry = ny;
 	} else if (yoff < ctx->woy && yoff + ny > ctx->woy + ctx->wsy) {
 		/* Both top and bottom not visible. */
-		*j = ctx->woy;
+		*j = ctx->woy - (ctx->yoff + py);
 		*y = 0;
 		*ry = ctx->wsy;
 	} else if (yoff < ctx->woy) {
@@ -2052,7 +2053,8 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 
 	if (ctx->num == 2) {
 		tty_draw_line(tty, s, 0, s->cy, screen_size_x(s),
-		    ctx->xoff - ctx->wox, py, &ctx->defaults, ctx->palette);
+		    ctx->xoff >= ctx->wox ? ctx->xoff - ctx->wox : 0,
+		    py, &ctx->defaults, ctx->palette);
 		return;
 	}
 
