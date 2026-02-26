@@ -275,7 +275,7 @@ mode_tree_up(struct mode_tree_data *mtd, int wrap)
 	if (mtd->current == 0) {
 		if (wrap) {
 			mtd->current = mtd->line_size - 1;
-			if (mtd->line_size >= mtd->height)
+			if (mtd->height > 0 && mtd->line_size >= mtd->height)
 				mtd->offset = mtd->line_size - mtd->height;
 		}
 	} else {
@@ -298,7 +298,8 @@ mode_tree_down(struct mode_tree_data *mtd, int wrap)
 			return (0);
 	} else {
 		mtd->current++;
-		if (mtd->current > mtd->offset + mtd->height - 1)
+		if (mtd->height > 0 &&
+		    mtd->current > mtd->offset + mtd->height - 1)
 			mtd->offset++;
 	}
 	return (1);
@@ -410,7 +411,7 @@ mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
 		return (0);
 	if (mode_tree_get_tag(mtd, tag, &found)) {
 		mtd->current = found;
-		if (mtd->current > mtd->height - 1)
+		if (mtd->height > 0 && mtd->current > mtd->height - 1)
 			mtd->offset = mtd->current - mtd->height + 1;
 		else
 			mtd->offset = 0;
@@ -418,7 +419,7 @@ mode_tree_set_current(struct mode_tree_data *mtd, uint64_t tag)
 	}
 	if (mtd->current >= mtd->line_size) {
 		mtd->current = mtd->line_size - 1;
-		if (mtd->current > mtd->height - 1)
+		if (mtd->height > 0 && mtd->current > mtd->height - 1)
 			mtd->offset = mtd->current - mtd->height + 1;
 		else
 			mtd->offset = 0;
@@ -458,7 +459,7 @@ mode_tree_each_tagged(struct mode_tree_data *mtd, mode_tree_each_cb cb,
 		}
 	}
 	if (!fired && current) {
-		if (mtd->line_size == 0)
+		if (mtd->current >= mtd->line_size)
 			return;
 		mti = mtd->line_list[mtd->current].item;
 		cb(mtd->modedata, mti->itemdata, c, key);
@@ -538,6 +539,8 @@ mode_tree_set_height(struct mode_tree_data *mtd)
 		height = mtd->heightcb(mtd, screen_size_y(s));
 		if (height < screen_size_y(s))
 		    mtd->height = screen_size_y(s) - height;
+		else
+		    mtd->height = screen_size_y(s);
 	} else {
 		if (mtd->preview == MODE_TREE_PREVIEW_NORMAL) {
 			mtd->height = (screen_size_y(s) / 3) * 2;
@@ -564,7 +567,7 @@ mode_tree_build(struct mode_tree_data *mtd)
 	struct screen	*s = &mtd->screen;
 	uint64_t	 tag;
 
-	if (mtd->line_list != NULL)
+	if (mtd->line_list != NULL && mtd->current < mtd->line_size)
 		tag = mtd->line_list[mtd->current].item->tag;
 	else
 		tag = UINT64_MAX;
@@ -586,7 +589,8 @@ mode_tree_build(struct mode_tree_data *mtd)
 	mtd->maxdepth = 0;
 	mode_tree_build_lines(mtd, &mtd->children, 0);
 
-	if (mtd->line_list != NULL && tag == UINT64_MAX)
+	if (mtd->line_list != NULL && mtd->current < mtd->line_size &&
+	    tag == UINT64_MAX)
 		tag = mtd->line_list[mtd->current].item->tag;
 	mode_tree_set_current(mtd, tag);
 
@@ -724,7 +728,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	char			*text, *start, *key;
 	const char		*tag, *symbol;
 	size_t			 size, n;
-	int			 keylen, pad, alignlen[mtd->maxdepth + 1];
+	int			 keylen, pad, *alignlen;
 
 	if (mtd->line_size == 0)
 		return;
@@ -748,8 +752,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 			keylen = mti->keylen + 3;
 	}
 
-	for (i = 0; i < mtd->maxdepth + 1; i++)
-		alignlen[i] = 0;
+	alignlen = xcalloc(mtd->maxdepth + 1, sizeof *alignlen);
 	for (i = 0; i < mtd->line_size; i++) {
 		line = &mtd->line_list[i];
 		mti = line->item;
@@ -761,14 +764,16 @@ mode_tree_draw(struct mode_tree_data *mtd)
 	for (i = 0; i < mtd->line_size; i++) {
 		if (i < mtd->offset)
 			continue;
-		if (i > mtd->offset + h - 1)
+		if (h == 0 || i > mtd->offset + h - 1)
 			break;
 		line = &mtd->line_list[i];
 		mti = line->item;
 
 		screen_write_cursormove(&ctx, 0, i - mtd->offset, 0);
 
-		pad = keylen - 2 - mti->keylen;
+		pad = keylen - 2 - (int)mti->keylen;
+		if (pad < 0)
+			pad = 0;
 		if (mti->key != KEYC_NONE)
 			xasprintf(&key, "(%s)%*s", mti->keystr, pad, "");
 		else
@@ -896,6 +901,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 done:
 	screen_write_cursormove(&ctx, 0, mtd->current - mtd->offset, 0);
 	screen_write_stop(&ctx);
+	free(alignlen);
 }
 
 static struct mode_tree_item *
@@ -1110,8 +1116,8 @@ mode_tree_display_menu(struct mode_tree_data *mtd, struct client *c, u_int x,
 	u_int			 line;
 
 	if (mtd->line_size == 0)
-		line = mtd->current;
-	else if (mtd->offset + y > mtd->line_size - 1)
+		return;
+	if (mtd->offset + y > mtd->line_size - 1)
 		line = mtd->current;
 	else
 		line = mtd->offset + y;
@@ -1264,7 +1270,7 @@ mode_tree_key(struct mode_tree_data *mtd, struct client *c, key_code *key,
 	case 'G':
 	case KEYC_END:
 		mtd->current = mtd->line_size - 1;
-		if (mtd->current > mtd->height - 1)
+		if (mtd->height > 0 && mtd->current > mtd->height - 1)
 			mtd->offset = mtd->current - mtd->height + 1;
 		else
 			mtd->offset = 0;
