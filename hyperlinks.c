@@ -86,7 +86,9 @@ hyperlinks_by_uri_cmp(struct hyperlinks_uri *left, struct hyperlinks_uri *right)
 			return (-1);
 		if (*right->internal_id != '\0')
 			return (1);
-		return (left->inner - right->inner);
+		if (left->inner < right->inner)
+			return (-1);
+		return (left->inner > right->inner);
 	}
 
 	r = strcmp(left->internal_id, right->internal_id);
@@ -103,7 +105,9 @@ static int
 hyperlinks_by_inner_cmp(struct hyperlinks_uri *left,
     struct hyperlinks_uri *right)
 {
-	return (left->inner - right->inner);
+	if (left->inner < right->inner)
+		return (-1);
+	return (left->inner > right->inner);
 }
 RB_PROTOTYPE_STATIC(hyperlinks_by_inner_tree, hyperlinks_uri, by_inner_entry,
     hyperlinks_by_inner_cmp);
