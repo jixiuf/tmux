@@ -459,6 +459,7 @@ control_check_age(struct client *c, struct window_pane *wp,
 	} else {
 		if (age < CONTROL_MAXIMUM_AGE)
 			return (0);
+		free(c->exit_message);
 		c->exit_message = xstrdup("too far behind");
 		c->flags |= CLIENT_EXIT;
 		control_discard(c);
@@ -616,7 +617,7 @@ control_append_data(struct client *c, struct control_pane *cp, uint64_t age,
 {
 	u_char	*new_data;
 	size_t	 new_size, start;
-	u_int	 i;
+	size_t	 i;
 
 	if (message == NULL) {
 		message = evbuffer_new();
@@ -842,9 +843,9 @@ control_stop(struct client *c)
 	if (evtimer_initialized(&cs->subs_timer))
 		evtimer_del(&cs->subs_timer);
 
+	control_reset_offsets(c);
 	TAILQ_FOREACH_SAFE(cb, &cs->all_blocks, all_entry, cb1)
 		control_free_block(cs, cb);
-	control_reset_offsets(c);
 
 	free(cs);
 }

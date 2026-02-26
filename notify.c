@@ -105,6 +105,7 @@ notify_insert_hook(struct cmdq_item *item, struct notify_entry *ne)
 			break;
 		case CMD_PARSE_SUCCESS:
 			notify_insert_one_hook(item, ne, pr->cmdlist, state);
+			cmd_list_free(pr->cmdlist);
 			break;
 		}
 	} else {

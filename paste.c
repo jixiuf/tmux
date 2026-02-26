@@ -319,6 +319,9 @@ paste_make_sample(struct paste_buffer *pb)
 	const int	 flags = VIS_OCTAL|VIS_CSTYLE|VIS_TAB|VIS_NL;
 	const size_t	 width = 200;
 
+	if (pb->size == 0)
+		return (xstrdup(""));
+
 	len = pb->size;
 	if (len > width)
 		len = width;

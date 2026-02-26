@@ -203,6 +203,7 @@ server_kill_window(struct window *w, int renumber)
 	struct session	*s, *s1;
 	struct winlink	*wl;
 
+restart:
 	RB_FOREACH_SAFE(s, sessions, &sessions, s1) {
 		if (!session_has(s, w))
 			continue;
@@ -211,7 +212,7 @@ server_kill_window(struct window *w, int renumber)
 		while ((wl = winlink_find_by_window(&s->windows, w)) != NULL) {
 			if (session_detach(s, wl)) {
 				server_destroy_session_group(s);
-				break;
+				goto restart;
 			}
 			server_redraw_session_group(s);
 		}
@@ -276,14 +277,15 @@ server_link_window(struct session *src, struct winlink *srcwl,
 			notify_session_window("window-unlinked", dst,
 			    dstwl->window);
 			dstwl->flags &= ~WINLINK_ALERTFLAGS;
-			winlink_stack_remove(&dst->lastw, dstwl);
-			winlink_remove(&dst->windows, dstwl);
 
 			/* Force select/redraw if current. */
 			if (dstwl == dst->curw) {
 				selectflag = 1;
 				dst->curw = NULL;
 			}
+
+			winlink_stack_remove(&dst->lastw, dstwl);
+			winlink_remove(&dst->windows, dstwl);
 		}
 	}
 
@@ -354,7 +356,7 @@ server_destroy_pane(struct window_pane *wp, int notify)
 			notify_pane("pane-died", wp);
 
 		s = options_get_string(wp->options, "remain-on-exit-format");
-		if (*s != '\0') {
+		if (*s != '\0' && sy > 0) {
 			screen_write_start_pane(&ctx, wp, &wp->base);
 			screen_write_scrollregion(&ctx, 0, sy - 1);
 			screen_write_cursormove(&ctx, 0, sy - 1, 0);
@@ -477,14 +479,14 @@ server_destroy_session(struct session *s)
 void
 server_check_unattached(void)
 {
-	struct session		*s;
+	struct session		*s, *s1;
 	struct session_group	*sg;
 
 	/*
 	 * If any sessions are no longer attached and have destroy-unattached
 	 * set, collect them.
 	 */
-	RB_FOREACH(s, sessions, &sessions) {
+	RB_FOREACH_SAFE(s, sessions, &sessions, s1) {
 		if (s->attached != 0)
 			continue;
 		switch (options_get_number(s->options, "destroy-unattached")) {

@@ -135,8 +135,11 @@ options_value_to_string(struct options_entry *o, union options_value *ov,
 {
 	char	*s;
 
-	if (OPTIONS_IS_COMMAND(o))
+	if (OPTIONS_IS_COMMAND(o)) {
+		if (ov->cmdlist == NULL)
+			return (xstrdup(""));
 		return (cmd_list_print(ov->cmdlist, 0));
+	}
 	if (OPTIONS_IS_NUMBER(o)) {
 		switch (o->tableentry->type) {
 		case OPTIONS_TABLE_NUMBER:
@@ -490,7 +493,8 @@ options_array_set(struct options_entry *o, u_int idx, const char *value,
 
 	if (o->tableentry->type == OPTIONS_TABLE_COLOUR) {
 		if ((number = colour_fromstring(value)) == -1) {
-			xasprintf(cause, "bad colour: %s", value);
+			if (cause != NULL)
+				xasprintf(cause, "bad colour: %s", value);
 			return (-1);
 		}
 		a = options_array_item(o, idx);
@@ -790,8 +794,10 @@ options_set_string(struct options *oo, const char *name, int append,
 		o = options_add(oo, name);
 	else if (o == NULL) {
 		o = options_default(oo, options_parent_table_entry(oo, name));
-		if (o == NULL)
+		if (o == NULL) {
+			free(value);
 			return (NULL);
+		}
 	}
 
 	if (!OPTIONS_IS_STRING(o))
@@ -997,12 +1003,15 @@ options_string_to_style(struct options *oo, const char *name,
 		expanded = format_expand(ft, s);
 		if (style_parse(&o->style, &grid_default_cell, expanded) != 0) {
 			free(expanded);
+			o->cached = 0;
 			return (NULL);
 		}
 		free(expanded);
 	} else {
-		if (style_parse(&o->style, &grid_default_cell, s) != 0)
+		if (style_parse(&o->style, &grid_default_cell, s) != 0) {
+			o->cached = 0;
 			return (NULL);
+		}
 	}
 	return (&o->style);
 }
@@ -1118,6 +1127,8 @@ options_from_string(struct options *oo, const struct options_table_entry *oe,
 			xasprintf(cause, "bad option name");
 			return (-1);
 		}
+		if (value == NULL)
+			value = "";
 		type = OPTIONS_TABLE_STRING;
 	}
 
@@ -1280,7 +1291,7 @@ options_push_changes(const char *name)
 					    tty_term_string(loop->tty.term,
 					    TTYC_ENKITK));
 					tty_puts(&loop->tty, "\033[?u");
-					loop->tty.flags |= TTY_HAVEDA_KITTY;
+					loop->tty.kitty_state = 1;
 				}
 			} else if (!want && loop->tty.kitty_state > 0) {
 					tty_puts(&loop->tty,

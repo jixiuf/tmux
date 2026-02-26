@@ -1341,8 +1341,6 @@ status_prompt_key(struct client *c, key_code key)
 		free(s);
 		return (1);
 	}
-	key &= ~KEYC_MASK_FLAGS;
-
 	if (c->prompt_flags & (PROMPT_SINGLE|PROMPT_QUOTENEXT)) {
 		if ((key & KEYC_MASK_KEY) == KEYC_BSPACE)
 			key = 0x7f;
@@ -1355,6 +1353,7 @@ status_prompt_key(struct client *c, key_code key)
 		c->prompt_flags &= ~PROMPT_QUOTENEXT;
 		goto append_key;
 	}
+	key &= ~KEYC_MASK_FLAGS;
 
 	keys = options_get_number(oo, "status-keys");
 	if (keys == MODEKEY_VI) {
@@ -1884,8 +1883,12 @@ status_prompt_complete_list_menu(struct client *c, char **list, u_int size,
 	if (c->session == NULL ||
 	    options_get_number(c->session->options, "status-position") == 0)
 		py = lines;
-	else
-		py = c->tty.sy - 3 - height;
+	else {
+		if (c->tty.sy >= 3 + height)
+			py = c->tty.sy - 3 - height;
+		else
+			py = 0;
+	}
 	offset += utf8_cstrwidth(c->prompt_string);
 	if (offset > 2)
 		offset -= 2;
@@ -1981,8 +1984,12 @@ status_prompt_complete_window_menu(struct client *c, struct session *s,
 	if (c->session == NULL ||
 	    options_get_number(c->session->options, "status-position") == 0)
 		py = lines;
-	else
-		py = c->tty.sy - 3 - height;
+	else {
+		if (c->tty.sy >= 3 + height)
+			py = c->tty.sy - 3 - height;
+		else
+			py = 0;
+	}
 	offset += utf8_cstrwidth(c->prompt_string);
 	if (offset > 2)
 		offset -= 2;
