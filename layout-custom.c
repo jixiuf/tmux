@@ -39,6 +39,8 @@ layout_find_bottomright(struct layout_cell *lc)
 	if (lc->type == LAYOUT_WINDOWPANE)
 		return (lc);
 	lc = TAILQ_LAST(&lc->cells, layout_cells);
+	if (lc == NULL)
+		return (NULL);
 	return (layout_find_bottomright(lc));
 }
 
@@ -99,6 +101,8 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 		brackets = "}{";
 		/* FALLTHROUGH */
 	case LAYOUT_TOPBOTTOM:
+		if (TAILQ_EMPTY(&lc->cells))
+			return (-1);
 		if (strlcat(buf, &brackets[1], len) >= len)
 			return (-1);
 		TAILQ_FOREACH(lcchild, &lc->cells, entry) {
@@ -134,7 +138,7 @@ layout_check(struct layout_cell *lc)
 				return (0);
 			n += lcchild->sx + 1;
 		}
-		if (n - 1 != lc->sx)
+		if (n == 0 || n - 1 != lc->sx)
 			return (0);
 		break;
 	case LAYOUT_TOPBOTTOM:
@@ -145,7 +149,7 @@ layout_check(struct layout_cell *lc)
 				return (0);
 			n += lcchild->sy + 1;
 		}
-		if (n - 1 != lc->sy)
+		if (n == 0 || n - 1 != lc->sy)
 			return (0);
 		break;
 	}
@@ -166,7 +170,12 @@ layout_parse(struct window *w, const char *layout, char **cause)
 		*cause = xstrdup("invalid layout");
 		return (-1);
 	}
-	layout += 5;
+	layout = strchr(layout, ',');
+	if (layout == NULL) {
+		*cause = xstrdup("invalid layout");
+		return (-1);
+	}
+	layout++;
 	if (csum != layout_checksum(layout)) {
 		*cause = xstrdup("invalid layout");
 		return (-1);
@@ -290,6 +299,8 @@ layout_construct(struct layout_cell *lcparent, const char **layout)
 	if (!isdigit((u_char) **layout))
 		return (NULL);
 	if (sscanf(*layout, "%ux%u,%u,%u", &sx, &sy, &xoff, &yoff) != 4)
+		return (NULL);
+	if (sx == 0 || sy == 0)
 		return (NULL);
 
 	while (isdigit((u_char) **layout))

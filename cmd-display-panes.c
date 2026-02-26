@@ -92,7 +92,7 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	} else {
 		/* Right not visible. */
 		xoff = wp->xoff - ctx->ox;
-		sx = wp->sx - xoff;
+		sx = ctx->sx - xoff;
 	}
 	if (wp->yoff >= ctx->oy && wp->yoff + wp->sy <= ctx->oy + ctx->sy) {
 		/* All visible. */
@@ -110,7 +110,7 @@ cmd_display_panes_draw_pane(struct screen_redraw_ctx *ctx,
 	} else {
 		/* Bottom not visible. */
 		yoff = wp->yoff - ctx->oy;
-		sy = wp->sy - yoff;
+		sy = ctx->sy - yoff;
 	}
 
 	if (ctx->statustop)

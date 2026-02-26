@@ -376,9 +376,11 @@ cmd_find_get_window_with_session(struct cmd_find_state *fs, const char *window)
 
 	/* Try as an offset. */
 	if (!exact && (window[0] == '+' || window[0] == '-')) {
-		if (window[1] != '\0')
-			n = strtonum(window + 1, 1, INT_MAX, NULL);
-		else
+		if (window[1] != '\0') {
+			n = strtonum(window + 1, 1, INT_MAX, &errstr);
+			if (errstr != NULL)
+				return (-1);
+		} else
 			n = 1;
 		s = fs->s;
 		if (fs->flags & CMD_FIND_WINDOW_INDEX) {
@@ -616,9 +618,11 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 
 	/* Try as an offset. */
 	if (pane[0] == '+' || pane[0] == '-') {
-		if (pane[1] != '\0')
-			n = strtonum(pane + 1, 1, INT_MAX, NULL);
-		else
+		if (pane[1] != '\0') {
+			n = strtonum(pane + 1, 1, INT_MAX, &errstr);
+			if (errstr != NULL)
+				return (-1);
+		} else
 			n = 1;
 		wp = fs->w->active;
 		if (wp == NULL)
@@ -712,8 +716,11 @@ cmd_find_log_state(const char *prefix, struct cmd_find_state *fs)
 	else
 		log_debug("%s: s=none", prefix);
 	if (fs->wl != NULL) {
-		log_debug("%s: wl=%u %d w=@%u %s", prefix, fs->wl->idx,
-		    fs->wl->window == fs->w, fs->w->id, fs->w->name);
+		if (fs->w != NULL)
+			log_debug("%s: wl=%u %d w=@%u %s", prefix, fs->wl->idx,
+			    fs->wl->window == fs->w, fs->w->id, fs->w->name);
+		else
+			log_debug("%s: wl=%u w=none", prefix, fs->wl->idx);
 	} else
 		log_debug("%s: wl=none", prefix);
 	if (fs->wp != NULL)
@@ -885,8 +892,10 @@ cmd_find_from_client(struct cmd_find_state *fs, struct client *c, int flags)
 		fs->wp = server_client_get_pane(c);
 		if (fs->wp == NULL) {
 			cmd_find_from_session(fs, c->session, flags);
-			if (fs->wl == NULL)
+			if (fs->wl == NULL) {
+				cmd_find_clear_state(fs, flags);
 				return (-1);
+			}
 			return (0);
 		}
 		fs->s = c->session;

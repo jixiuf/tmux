@@ -43,6 +43,8 @@ regsub_expand(char **buf, ssize_t *len, const char *with, const char *text,
 	for (cp = with; *cp != '\0'; cp++) {
 		if (*cp == '\\') {
 			cp++;
+			if (*cp == '\0')
+				break;
 			if (*cp >= '0' && *cp <= '9') {
 				i = *cp - '0';
 				if (i < n && m[i].rm_so != m[i].rm_eo) {

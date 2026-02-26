@@ -182,6 +182,8 @@ window_client_draw(__unused void *modedata, void *itemdata,
 	lines = status_line_size(c);
 	if (lines >= sy)
 		lines = 0;
+	if (sy < 3)
+		return;
 	if (status_at_line(c) == 0)
 		at = lines;
 	else
@@ -327,8 +329,9 @@ window_client_do_detach(void *modedata, void *itemdata,
 	struct window_client_modedata	*data = modedata;
 	struct window_client_itemdata	*item = itemdata;
 
-	if (item == mode_tree_get_current(data->data))
-		mode_tree_down(data->data, 0);
+	if (item == mode_tree_get_current(data->data) &&
+	    !mode_tree_down(data->data, 0))
+		mode_tree_up(data->data, 0);
 	if (key == 'd' || key == 'D')
 		server_client_detach(item->c, MSG_DETACH);
 	else if (key == 'x' || key == 'X')

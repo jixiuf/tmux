@@ -83,6 +83,8 @@ proc_event_cb(__unused int fd, short events, void *arg)
 			return;
 		}
 		for (;;) {
+			if (peer->flags & PEER_BAD)
+				break;
 			if ((n = imsg_get(&peer->ibuf, &imsg)) == -1) {
 				peer->dispatchcb(NULL, peer->arg);
 				return;
@@ -293,6 +295,8 @@ proc_clear_signals(struct tmuxproc *tp, int defaults)
 		sigaction(SIGUSR1, &sa, NULL);
 		sigaction(SIGUSR2, &sa, NULL);
 		sigaction(SIGWINCH, &sa, NULL);
+		sigaction(SIGTTIN, &sa, NULL);
+		sigaction(SIGTTOU, &sa, NULL);
 	}
 }
 

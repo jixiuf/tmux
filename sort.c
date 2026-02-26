@@ -65,10 +65,16 @@ sort_buffer_cmp(const void *a0, const void *b0)
 		result = strcmp(pa->name, pb->name);
 		break;
 	case SORT_CREATION:
-		result = pa->order - pb->order;
+		if (pa->order < pb->order)
+			result = -1;
+		else if (pa->order > pb->order)
+			result = 1;
 		break;
 	case SORT_SIZE:
-		result = pa->size - pb->size;
+		if (pa->size < pb->size)
+			result = -1;
+		else if (pa->size > pb->size)
+			result = 1;
 		break;
 	case SORT_ACTIVITY:
 	case SORT_INDEX:

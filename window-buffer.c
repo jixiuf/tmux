@@ -532,12 +532,15 @@ window_buffer_key(struct window_mode_entry *wme, struct client *c,
 	switch (key) {
 	case 'e':
 		item = mode_tree_get_current(mtd);
-		window_buffer_start_edit(data, item, c);
+		if (item != NULL)
+			window_buffer_start_edit(data, item, c);
 		break;
 	case 'd':
 		item = mode_tree_get_current(mtd);
-		window_buffer_do_delete(data, item, c, key);
-		mode_tree_build(mtd);
+		if (item != NULL) {
+			window_buffer_do_delete(data, item, c, key);
+			mode_tree_build(mtd);
+		}
 		break;
 	case 'D':
 		mode_tree_each_tagged(mtd, window_buffer_do_delete, c, key, 0);

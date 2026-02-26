@@ -354,8 +354,8 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
     struct cmd_find_state *current, const char *fmt, ...)
 {
 	struct cmdq_state		*state = item->state;
-	struct cmd			*cmd = item->cmd;
-	struct args			*args = cmd_get_args(cmd);
+	struct cmd			*cmd;
+	struct args			*args;
 	struct args_entry		*ae;
 	struct args_value		*av;
 	struct options			*oo;
@@ -371,6 +371,10 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 
 	if (item->state->flags & CMDQ_STATE_NOHOOKS)
 		return;
+	if (item->type != CMDQ_COMMAND || item->cmd == NULL)
+		return;
+	cmd = item->cmd;
+	args = cmd_get_args(cmd);
 	if (s == NULL)
 		oo = global_s_options;
 	else
@@ -417,7 +421,9 @@ cmdq_insert_hook(struct session *s, struct cmdq_item *item,
 		av = args_first_value(args, flag);
 		while (av != NULL) {
 			xsnprintf(tmp, sizeof tmp, "hook_flag_%c_%d", flag, i);
-			cmdq_add_format(new_state, tmp, "%s", av->string);
+			if (av->type == ARGS_STRING)
+				cmdq_add_format(new_state, tmp, "%s",
+				    av->string);
 			i++;
 			av = args_next_value(av);
 		}
@@ -876,7 +882,12 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 	log_debug("%s: %s", __func__, msg);
 
 	if (c == NULL) {
-		cmd_get_source(cmd, &file, &line);
+		if (cmd != NULL)
+			cmd_get_source(cmd, &file, &line);
+		else {
+			file = "unknown";
+			line = 0;
+		}
 		cfg_add_cause("%s:%u: %s", file, line, msg);
 	} else if (c->session == NULL || (c->flags & CLIENT_CONTROL)) {
 		server_add_message("%s message: %s", c->name, msg);

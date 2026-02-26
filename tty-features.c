@@ -410,11 +410,11 @@ tty_add_features(int *feat, const char *s, const char *separators)
 		}
 		if (i == nitems(tty_features)) {
 			log_debug("unknown terminal feature: %s", next);
-			break;
+			continue;
 		}
-		if (~(*feat) & (1 << i)) {
+		if (~(*feat) & (1u << i)) {
 			log_debug("adding terminal feature: %s", tf->name);
-			(*feat) |= (1 << i);
+			(*feat) |= (1u << i);
 		}
 	}
 	free(copy);
@@ -429,7 +429,7 @@ tty_get_features(int feat)
 
 	*s = '\0';
 	for (i = 0; i < nitems(tty_features); i++) {
-		if (~feat & (1 << i))
+		if (~feat & (1u << i))
 			continue;
 		tf = tty_features[i];
 
