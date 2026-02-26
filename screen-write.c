@@ -253,6 +253,7 @@ screen_write_free_list(struct screen *s)
 		free(s->write_list[y].data);
 	}
 	free(s->write_list);
+	s->write_list = NULL;
 }
 
 /* Set up for writing. */

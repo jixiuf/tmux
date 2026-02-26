@@ -3393,7 +3393,7 @@ input_osc_52_parse(struct input_ctx *ictx, const char *p, u_char **out,
 		return (0);
 	}
 
-	len = (strlen(end) / 4) * 3;
+	len = (strlen(end) / 4) * 3 + 3;
 	if (len == 0)
 		return (0);
 

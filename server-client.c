@@ -3697,14 +3697,14 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		if (datalen != sizeof flags)
 			return (-1);
 		memcpy(&flags, data, sizeof flags);
-		c->flags |= flags;
+		c->flags |= (flags & CLIENT_IDENTIFYFLAGS);
 		log_debug("client %p IDENTIFY_FLAGS %#x", c, flags);
 		break;
 	case MSG_IDENTIFY_LONGFLAGS:
 		if (datalen != sizeof longflags)
 			return (-1);
 		memcpy(&longflags, data, sizeof longflags);
-		c->flags |= longflags;
+		c->flags |= (longflags & CLIENT_IDENTIFYFLAGS);
 		log_debug("client %p IDENTIFY_LONGFLAGS %#llx", c,
 		    (unsigned long long)longflags);
 		break;
