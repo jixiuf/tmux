@@ -262,8 +262,11 @@ window_tree_build_window(struct session *s, struct winlink *wl,
 	item->winlink = wl->idx;
 	item->pane = -1;
 
-	if (wl->window->active == NULL)
+	if (wl->window->active == NULL) {
+		window_tree_free_item(item);
+		data->item_size--;
 		return (0);
+	}
 	ft = format_create(NULL, NULL, FORMAT_PANE|wl->window->active->id, 0);
 	format_defaults(ft, NULL, s, wl, NULL);
 	text = format_expand(ft, data->format);
@@ -412,7 +415,7 @@ window_tree_draw_label(struct screen_write_ctx *ctx, u_int px, u_int py,
 	u_int	 ox, oy;
 
 	len = strlen(label);
-	if (sx == 0 || sy == 1 || len > sx)
+	if (sx == 0 || sy == 0 || sy == 1 || len > sx)
 		return;
 	ox = (sx - len + 1) / 2;
 	oy = (sy + 1) / 2;
@@ -840,6 +843,9 @@ window_tree_swap(void *cur_itemdata, void *other_itemdata,
 	window_tree_pull_item(other, &other_session, &other_winlink,
 	    &other_pane);
 
+	if (cur_session == NULL || cur_winlink == NULL ||
+	    other_session == NULL || other_winlink == NULL)
+		return (0);
 	if (cur_session != other_session)
 		return (0);
 

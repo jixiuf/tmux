@@ -3588,7 +3588,8 @@ server_client_command_done(struct cmdq_item *item, __unused void *data)
 	else if (~c->flags & CLIENT_EXIT) {
 		if (c->flags & CLIENT_CONTROL)
 			control_ready(c);
-		tty_send_requests(&c->tty);
+		if (c->flags & CLIENT_TERMINAL)
+			tty_send_requests(&c->tty);
 	}
 	return (CMD_RETURN_NORMAL);
 }
@@ -3618,6 +3619,8 @@ server_client_dispatch_command(struct client *c, struct imsg *imsg)
 	if (len > 0 && buf[len - 1] != '\0')
 		return (-1);
 
+	if (data.argc < 0)
+		return (-1);
 	if (cmd_unpack_argv(buf, len, data.argc, &argv) != 0) {
 		cause = xstrdup("command too long");
 		goto error;

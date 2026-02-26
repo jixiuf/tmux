@@ -962,8 +962,12 @@ screen_redraw_draw_status(struct screen_redraw_ctx *ctx)
 
 	if (ctx->statustop)
 		y = 0;
-	else
-		y = c->tty.sy - ctx->statuslines;
+	else {
+		if (c->tty.sy > ctx->statuslines)
+			y = c->tty.sy - ctx->statuslines;
+		else
+			y = 0;
+	}
 	for (i = 0; i < ctx->statuslines; i++) {
 		tty_draw_line(tty, s, 0, i, UINT_MAX, 0, y + i,
 		    &grid_default_cell, NULL);

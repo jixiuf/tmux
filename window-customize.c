@@ -432,6 +432,10 @@ window_customize_build_options(struct window_customize_modedata *data,
 			o = options_get(oo1, name);
 		else
 			o = loop;
+		if (o == NULL) {
+			loop = options_next(loop);
+			continue;
+		}
 		if (options_owner(o) == oo2)
 			scope = scope2;
 		else if (options_owner(o) == oo1)
@@ -1192,11 +1196,14 @@ window_customize_set_command_callback(struct client *c, void *itemdata,
     const char *s, __unused int done)
 {
 	struct window_customize_itemdata	*item = itemdata;
-	struct window_customize_modedata	*data = item->data;
+	struct window_customize_modedata	*data;
 	struct key_binding			*bd;
 	struct cmd_parse_result			*pr;
 	char					*error;
 
+	if (item == NULL)
+		return (0);
+	data = item->data;
 	if (s == NULL || *s == '\0' || data->dead)
 		return (0);
 	if (item == NULL || !window_customize_get_key(item, NULL, &bd))
@@ -1231,12 +1238,15 @@ window_customize_set_note_callback(__unused struct client *c, void *itemdata,
     const char *s, __unused int done)
 {
 	struct window_customize_itemdata	*item = itemdata;
-	struct window_customize_modedata	*data = item->data;
+	struct window_customize_modedata	*data;
 	struct key_binding			*bd;
 
+	if (item == NULL)
+		return (0);
+	data = item->data;
 	if (s == NULL || *s == '\0' || data->dead)
 		return (0);
-	if (item == NULL || !window_customize_get_key(item, NULL, &bd))
+	if (!window_customize_get_key(item, NULL, &bd))
 		return (0);
 
 	free((void *)bd->note);
@@ -1377,6 +1387,8 @@ window_customize_change_current_callback(__unused struct client *c,
 		return (0);
 
 	item = mode_tree_get_current(data->data);
+	if (item == NULL)
+		return (0);
 	switch (data->change) {
 	case WINDOW_CUSTOMIZE_UNSET:
 		if (item->scope == WINDOW_CUSTOMIZE_KEY)
