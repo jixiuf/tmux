@@ -3318,7 +3318,7 @@ input_osc_133(struct input_ctx *ictx, const char *p)
 	u_int			 line = ictx->ctx.s->cy + gd->hsize;
 	struct grid_line	*gl;
 
-	if (line > gd->hsize + gd->sy - 1)
+	if (gd->sy == 0 || line > gd->hsize + gd->sy - 1)
 		return;
 	gl = grid_get_line(gd, line);
 
@@ -3341,6 +3341,9 @@ input_osc_52_reply(struct input_ctx *ictx, char clip)
 	int			 state;
 	const char		*buf;
 	size_t			 len;
+
+	if (ev == NULL)
+		return;
 
 	state = options_get_number(global_options, "get-clipboard");
 	if (state == 0)
@@ -3647,6 +3650,9 @@ input_request_clipboard_reply(struct input_request *ir, void *data)
 	struct input_request_clipboard_data	*cd = data;
 	int					 state;
 	char					*copy;
+
+	if (ev == NULL)
+		return;
 
 	state = options_get_number(global_options, "get-clipboard");
 	if (state == 0 || state == 1)

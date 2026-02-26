@@ -2081,9 +2081,13 @@ static enum window_copy_cmd_action
 window_copy_cmd_selection_mode(struct window_copy_cmd_state *cs)
 {
 	struct window_mode_entry	*wme = cs->wme;
-	struct options			*so = cs->s->options;
 	struct window_copy_mode_data	*data = wme->data;
+	struct options			*so;
 	const char			*s = args_string(cs->wargs, 0);
+
+	if (cs->s == NULL)
+		return (WINDOW_COPY_CMD_NOTHING);
+	so = cs->s->options;
 
 	if (s == NULL || strcasecmp(s, "char") == 0 || strcasecmp(s, "c") == 0)
 		data->selflag = SEL_CHAR;
@@ -4186,9 +4190,13 @@ window_copy_search(struct window_mode_entry *wme, int direction, int regex)
 			if (keys == MODEKEY_EMACS) {
 				window_copy_move_after_search_mark(data, &fx,
 				    &fy, wrapflag);
-				data->cx = fx;
-				data->cy = fy - screen_hsize(data->backing) +
-				    data-> oy;
+				if (fy >= screen_hsize(data->backing) -
+				    data->oy) {
+					data->cx = fx;
+					data->cy = fy -
+					    screen_hsize(data->backing) +
+					    data->oy;
+				}
 			}
 		} else {
 			/*
@@ -5891,8 +5899,12 @@ window_copy_cursor_prompt(struct window_mode_entry *wme, int direction,
 	struct screen			*s = data->backing;
 	struct grid			*gd = s->grid;
 	u_int				 end_line;
-	u_int				 line = gd->hsize - data->oy + data->cy;
+	u_int				 line;
 	int				 add, line_flag;
+
+	if (data->oy > gd->hsize)
+		return;
+	line = gd->hsize - data->oy + data->cy;
 
 	if (start_output)
 		line_flag = GRID_LINE_START_OUTPUT;

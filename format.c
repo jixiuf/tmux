@@ -4876,7 +4876,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			case '=':
 				if (fm->argc < 1)
 					break;
-				limit = strtonum(fm->argv[0], INT_MIN, INT_MAX,
+				limit = strtonum(fm->argv[0], INT_MIN + 1, INT_MAX,
 				    &errstr);
 				if (errstr != NULL)
 					limit = 0;
@@ -4886,7 +4886,7 @@ format_replace(struct format_expand_state *es, const char *key, size_t keylen,
 			case 'p':
 				if (fm->argc < 1)
 					break;
-				width = strtonum(fm->argv[0], INT_MIN, INT_MAX,
+				width = strtonum(fm->argv[0], INT_MIN + 1, INT_MAX,
 				    &errstr);
 				if (errstr != NULL)
 					width = 0;
@@ -5411,6 +5411,7 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 		if (format_strftime(expanded, sizeof expanded, fmt,
 		    &es->tm) == 0) {
 			format_log(es, "format is too long");
+			es->loop--;
 			return (xstrdup(""));
 		}
 		if (format_logging(ft) && strcmp(expanded, fmt) != 0)

@@ -439,7 +439,7 @@ popup_make_pane(struct popup_data *pd, enum layout_type type)
 
 	screen_set_title(&pd->s, new_wp->base.title);
 	screen_free(&new_wp->base);
-	memcpy(&new_wp->base, &pd->s, sizeof wp->base);
+	memcpy(&new_wp->base, &pd->s, sizeof new_wp->base);
 	screen_resize(&new_wp->base, new_wp->sx, new_wp->sy, 1);
 	screen_init(&pd->s, 1, 1, 0);
 
