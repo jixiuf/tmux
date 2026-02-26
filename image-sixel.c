@@ -446,6 +446,14 @@ sixel_scale(struct sixel_image *si, u_int xpixel, u_int ypixel, u_int ox,
 	if (ypixel == 0)
 		ypixel = si->ypixel;
 
+	if (si->xpixel == 0 || si->ypixel == 0 ||
+	    xpixel == 0 || ypixel == 0)
+		return (NULL);
+	if (ox > UINT_MAX / si->xpixel || sx > UINT_MAX / si->xpixel ||
+	    oy > UINT_MAX / si->ypixel || sy > UINT_MAX / si->ypixel ||
+	    sx > UINT_MAX / xpixel || sy > UINT_MAX / ypixel)
+		return (NULL);
+
 	pox = ox * si->xpixel;
 	poy = oy * si->ypixel;
 	psx = sx * si->xpixel;
@@ -497,8 +505,9 @@ static void
 sixel_print_add(char **buf, size_t *len, size_t *used, const char *s,
     size_t slen)
 {
-	if (*used + slen >= *len + 1) {
-		(*len) *= 2;
+	if (*used + slen >= *len) {
+		while (*used + slen >= *len)
+			(*len) *= 2;
 		*buf = xrealloc(*buf, *len);
 	}
 	memcpy(*buf + *used, s, slen);
@@ -644,11 +653,11 @@ sixel_print(struct sixel_image *si, struct sixel_image *map, size_t *size)
 			chunk->used = chunk->next_x = chunk->count = 0;
 		}
 
-		if (buf[used - 1] == '$')
+		if (used > 0 && buf[used - 1] == '$')
 			used--;
 		sixel_print_add(&buf, &len, &used, "-", 1);
 	}
-	if (buf[used - 1] == '-')
+	if (used > 0 && buf[used - 1] == '-')
 		used--;
 
 	sixel_print_add(&buf, &len, &used, "\033\\", 2);

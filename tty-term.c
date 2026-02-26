@@ -450,7 +450,10 @@ tty_term_apply_overrides(struct tty_term *term)
 
 	/* Update capabilities from the option. */
 	o = options_get_only(global_options, "terminal-overrides");
-	a = options_array_first(o);
+	if (o == NULL)
+		a = NULL;
+	else
+		a = options_array_first(o);
 	while (a != NULL) {
 		ov = options_array_item_value(a);
 		s = ov->string;
@@ -593,7 +596,10 @@ tty_term_create(struct tty *tty, char *name, char **caps, u_int ncaps,
 
 	/* Apply terminal features. */
 	o = options_get_only(global_options, "terminal-features");
-	a = options_array_first(o);
+	if (o == NULL)
+		a = NULL;
+	else
+		a = options_array_first(o);
 	while (a != NULL) {
 		ov = options_array_item_value(a);
 		s = ov->string;

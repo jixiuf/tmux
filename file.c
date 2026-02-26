@@ -613,6 +613,7 @@ file_write_open(struct client_files *files, struct tmuxpeer *peer,
 	      errno = EBADF;
 	if (cf->fd == -1) {
 		error = errno;
+		file_free(cf);
 		goto reply;
 	}
 
@@ -636,10 +637,11 @@ file_write_data(struct client_files *files, struct imsg *imsg)
 	struct msg_write_data	*msg = imsg->data;
 	size_t			 msglen = imsg->hdr.len - IMSG_HEADER_SIZE;
 	struct client_file	 find, *cf;
-	size_t			 size = msglen - sizeof *msg;
+	size_t			 size;
 
 	if (msglen < sizeof *msg)
 		fatalx("bad MSG_WRITE size");
+	size = msglen - sizeof *msg;
 	find.stream = msg->stream;
 	if ((cf = RB_FIND(client_files, files, &find)) == NULL)
 		fatalx("unknown stream number");
@@ -780,6 +782,7 @@ file_read_open(struct client_files *files, struct tmuxpeer *peer,
 		errno = EBADF;
 	if (cf->fd == -1) {
 		error = errno;
+		file_free(cf);
 		goto reply;
 	}
 
@@ -842,10 +845,11 @@ file_read_data(struct client_files *files, struct imsg *imsg)
 	size_t			 msglen = imsg->hdr.len - IMSG_HEADER_SIZE;
 	struct client_file	 find, *cf;
 	void			*bdata = msg + 1;
-	size_t			 bsize = msglen - sizeof *msg;
+	size_t			 bsize;
 
 	if (msglen < sizeof *msg)
 		fatalx("bad MSG_READ_DATA size");
+	bsize = msglen - sizeof *msg;
 	find.stream = msg->stream;
 	if ((cf = RB_FIND(client_files, files, &find)) == NULL)
 		return;

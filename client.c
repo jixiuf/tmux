@@ -122,7 +122,8 @@ retry:
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 		if (locked) {
 			free(lockfile);
-			close(lockfd);
+			if (lockfd >= 0)
+				close(lockfd);
 		}
 		return (-1);
 	}
@@ -179,7 +180,8 @@ retry:
 failed:
 	if (locked) {
 		free(lockfile);
-		close(lockfd);
+		if (lockfd >= 0)
+			close(lockfd);
 	}
 	close(fd);
 	return (-1);
@@ -350,6 +352,7 @@ client_main(struct event_base *base, int argc, char **argv, uint64_t flags,
 		if (tcgetattr(STDIN_FILENO, &saved_tio) != 0) {
 			fprintf(stderr, "tcgetattr failed: %s\n",
 			    strerror(errno));
+			tty_term_free_list(caps, ncaps);
 			return (1);
 		}
 		cfmakeraw(&tio);
