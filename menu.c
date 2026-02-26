@@ -94,7 +94,7 @@ menu_add_item(struct menu *menu, const struct menu_item *item,
 		menu->count--;
 		return;
 	}
-	if (c->tty.sx < 4) {
+	if (c->tty.sx < 5) {
 		free(s);
 		menu->count--;
 		return;

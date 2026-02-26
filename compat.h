@@ -231,7 +231,7 @@ void	warnx(const char *, ...);
 #endif
 
 #ifndef SUN_LEN
-#define SUN_LEN(sun) (sizeof (sun)->sun_path)
+#define SUN_LEN(su) (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
 #endif
 
 #ifndef timercmp

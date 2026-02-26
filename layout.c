@@ -324,8 +324,8 @@ layout_fix_panes(struct window *w, struct window_pane *skip)
 				sb_pad = 0;
 			if (sb_pos == PANE_SCROLLBARS_LEFT) {
 				if ((int)sx - sb_w - sb_pad < PANE_MINIMUM) {
-					wp->xoff = wp->xoff +
-					    (int)sx - PANE_MINIMUM;
+					if (sx > PANE_MINIMUM)
+						wp->xoff += sx - PANE_MINIMUM;
 					sx = PANE_MINIMUM;
 				} else {
 					sx = sx - sb_w - sb_pad;
@@ -563,7 +563,10 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 	 * out proportionately - this should leave the layout fitting the new
 	 * window size.
 	 */
-	xchange = sx - lc->sx;
+	if (sx >= lc->sx)
+		xchange = (int)(sx - lc->sx);
+	else
+		xchange = -(int)(lc->sx - sx);
 	xlimit = layout_resize_check(w, lc, LAYOUT_LEFTRIGHT);
 	if (xchange < 0 && xchange < -xlimit)
 		xchange = -xlimit;
@@ -577,7 +580,10 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 		layout_resize_adjust(w, lc, LAYOUT_LEFTRIGHT, xchange);
 
 	/* Adjust vertically in a similar fashion. */
-	ychange = sy - lc->sy;
+	if (sy >= lc->sy)
+		ychange = (int)(sy - lc->sy);
+	else
+		ychange = -(int)(lc->sy - sy);
 	ylimit = layout_resize_check(w, lc, LAYOUT_TOPBOTTOM);
 	if (ychange < 0 && ychange < -ylimit)
 		ychange = -ylimit;

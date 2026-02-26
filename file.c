@@ -33,7 +33,7 @@
  * are for use either in client or server but not both.
  */
 
-static int	file_next_stream = 3;
+static u_int	file_next_stream = 3;
 
 RB_GENERATE(client_files, client_file, entry, file_cmp);
 
