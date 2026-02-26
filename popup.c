@@ -392,9 +392,11 @@ popup_resize_cb(__unused struct client *c, void *data)
 
 	/* Avoid zero size screens. */
 	if (pd->border_lines == BOX_LINES_NONE) {
-		screen_resize(&pd->s, pd->sx, pd->sy, 0);
-		if (pd->job != NULL)
-			job_resize(pd->job, pd->sx, pd->sy );
+		if (pd->sx > 0 && pd->sy > 0) {
+			screen_resize(&pd->s, pd->sx, pd->sy, 0);
+			if (pd->job != NULL)
+				job_resize(pd->job, pd->sx, pd->sy);
+		}
 	} else if (pd->sx > 2 && pd->sy > 2) {
 		screen_resize(&pd->s, pd->sx - 2, pd->sy - 2, 0);
 		if (pd->job != NULL)
@@ -485,8 +487,14 @@ popup_menu_done(__unused struct menu *menu, __unused u_int choice,
 		server_redraw_client(c);
 		break;
 	case 'C':
-		pd->px = c->tty.sx / 2 - pd->sx / 2;
-		pd->py = c->tty.sy / 2 - pd->sy / 2;
+		if (pd->sx <= c->tty.sx)
+			pd->px = c->tty.sx / 2 - pd->sx / 2;
+		else
+			pd->px = 0;
+		if (pd->sy <= c->tty.sy)
+			pd->py = c->tty.sy / 2 - pd->sy / 2;
+		else
+			pd->py = 0;
 		server_redraw_client(c);
 		break;
 	case 'h':
@@ -513,13 +521,13 @@ popup_handle_drag(struct client *c, struct popup_data *pd,
 		if (m->x < pd->dx)
 			px = 0;
 		else if (m->x - pd->dx + pd->sx > c->tty.sx)
-			px = c->tty.sx - pd->sx;
+			px = c->tty.sx >= pd->sx ? c->tty.sx - pd->sx : 0;
 		else
 			px = m->x - pd->dx;
 		if (m->y < pd->dy)
 			py = 0;
 		else if (m->y - pd->dy + pd->sy > c->tty.sy)
-			py = c->tty.sy - pd->sy;
+			py = c->tty.sy >= pd->sy ? c->tty.sy - pd->sy : 0;
 		else
 			py = m->y - pd->dy;
 		pd->px = px;
@@ -571,7 +579,9 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 	key_code		 pkey = event->key & ~KEYC_CAPS_LOCK;
 
 	if (pd->md != NULL) {
+		struct menu_data *saved_md = pd->md;
 		if (menu_key_cb(c, pd->md, event) == 1) {
+			menu_free_cb(c, saved_md);
 			pd->md = NULL;
 			pd->menu = NULL;
 			if (pd->close)
@@ -588,9 +598,9 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 			goto out;
 		}
 		if (m->x < pd->px ||
-		    m->x > pd->px + pd->sx - 1 ||
+		    m->x >= pd->px + pd->sx ||
 		    m->y < pd->py ||
-		    m->y > pd->py + pd->sy - 1) {
+		    m->y >= pd->py + pd->sy) {
 			if (MOUSE_BUTTONS(m->b) == MOUSE_BUTTON_3)
 				goto menu;
 			return (0);
@@ -617,8 +627,8 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 				pd->dragging = MOVE;
 			else if (MOUSE_BUTTONS(m->lb) == MOUSE_BUTTON_3)
 				pd->dragging = SIZE;
-			pd->dx = m->lx - pd->px;
-			pd->dy = m->ly - pd->py;
+			pd->dx = m->lx >= pd->px ? m->lx - pd->px : 0;
+			pd->dy = m->ly >= pd->py ? m->ly - pd->py : 0;
 			goto out;
 		}
 	}
@@ -637,6 +647,8 @@ popup_key_cb(struct client *c, void *data, struct key_event *event)
 				px = m->x - pd->px;
 				py = m->y - pd->py;
 			} else {
+				if (m->x <= pd->px || m->y <= pd->py)
+					return (0);
 				px = m->x - pd->px - 1;
 				py = m->y - pd->py - 1;
 			}
@@ -662,6 +674,10 @@ menu:
 		x = 0;
 	pd->md = menu_prepare(pd->menu, 0, 0, NULL, x, m->y, c,
 	    BOX_LINES_DEFAULT, NULL, NULL, NULL, NULL, popup_menu_done, pd);
+	if (pd->md == NULL) {
+		menu_free(pd->menu);
+		pd->menu = NULL;
+	}
 	c->flags |= CLIENT_REDRAWOVERLAY;
 
 out:
@@ -941,10 +957,12 @@ popup_editor(struct client *c, const char *buf, size_t len,
 	f = fdopen(fd, "w");
 	if (f == NULL) {
 		close(fd);
+		unlink(path);
 		return (-1);
 	}
-	if (fwrite(buf, len, 1, f) != 1) {
+	if (len > 0 && fwrite(buf, len, 1, f) != 1) {
 		fclose(f);
+		unlink(path);
 		return (-1);
 	}
 	fclose(f);
