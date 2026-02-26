@@ -249,6 +249,8 @@ status_at_line(struct client *c)
 		return (-1);
 	if (s->statusat != 1)
 		return (s->statusat);
+	if (status_line_size(c) > c->tty.sy)
+		return (-1);
 	return (c->tty.sy - status_line_size(c));
 }
 
@@ -270,7 +272,8 @@ u_int
 status_prompt_line_at(struct client *c)
 {
 	struct session	*s = c->session;
-	u_int		 line, lines;
+	u_int		 lines;
+	long long	 line;
 
 	lines = status_line_size(c);
 	if (lines == 0)
@@ -278,9 +281,9 @@ status_prompt_line_at(struct client *c)
 	if (s == NULL)
 		return (0);
 	line = options_get_number(s->options, "message-line");
-	if (line >= lines)
+	if (line < 0 || (u_int)line >= lines)
 		return (lines - 1);
-	return (line);
+	return ((u_int)line);
 }
 
 /* Get window at window list position. */
@@ -330,6 +333,8 @@ status_pop_screen(struct client *c)
 {
 	struct status_line *sl = &c->status;
 
+	if (sl->references == 0)
+		return;
 	if (--sl->references == 0) {
 		screen_free(sl->active);
 		free(sl->active);
@@ -1564,6 +1569,8 @@ process_key:
 		if (~c->prompt_flags & PROMPT_INCREMENTAL)
 			break;
 		if (c->prompt_buffer[0].size == 0) {
+			if (c->prompt_last == NULL)
+				break;
 			prefix = '=';
 			free(c->prompt_buffer);
 			c->prompt_buffer = utf8_fromcstr(c->prompt_last);
@@ -1575,6 +1582,8 @@ process_key:
 		if (~c->prompt_flags & PROMPT_INCREMENTAL)
 			break;
 		if (c->prompt_buffer[0].size == 0) {
+			if (c->prompt_last == NULL)
+				break;
 			prefix = '=';
 			free(c->prompt_buffer);
 			c->prompt_buffer = utf8_fromcstr(c->prompt_last);
@@ -1823,6 +1832,8 @@ status_prompt_menu_callback(__unused struct menu *menu, u_int idx, key_code key,
 
 	if (key != KEYC_NONE) {
 		idx += spm->start;
+		if (idx >= spm->size)
+			goto cleanup;
 		if (spm->flag == '\0')
 			s = xstrdup(spm->list[idx]);
 		else
@@ -1837,6 +1848,7 @@ status_prompt_menu_callback(__unused struct menu *menu, u_int idx, key_code key,
 		free(s);
 	}
 
+cleanup:
 	for (i = 0; i < spm->size; i++)
 		free(spm->list[i]);
 	free(spm->list);
@@ -2120,7 +2132,7 @@ status_prompt_complete(struct client *c, const char *word, u_int offset)
 		out = status_prompt_complete_window_menu(c, session, colon + 1,
 		    offset, flag);
 		if (out == NULL)
-			return (NULL);
+			goto found;
 	}
 
 found:

@@ -692,6 +692,7 @@ cmd_parse_run_parser(char **cause)
 		return (NULL);
 	}
 
+	free(ps->error);
 	if (ps->commands == NULL)
 		return (cmd_parse_new_commands());
 	return (ps->commands);
