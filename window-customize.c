@@ -1105,7 +1105,8 @@ window_customize_set_option(struct client *c,
 		options_set_number(oo, name, !flag);
 	} else if (oe != NULL && oe->type == OPTIONS_TABLE_CHOICE) {
 		choice = options_get_number(oo, name);
-		if (oe->choices[choice + 1] == NULL)
+		if (oe->choices[choice] == NULL ||
+		    oe->choices[choice + 1] == NULL)
 			choice = 0;
 		else
 			choice++;

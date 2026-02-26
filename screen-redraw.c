@@ -104,7 +104,10 @@ screen_redraw_two_panes(struct window *w, int direction)
 {
 	struct window_pane	*wp;
 
-	wp = TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry);
+	wp = TAILQ_FIRST(&w->panes);
+	if (wp == NULL)
+		return (0); /* no panes */
+	wp = TAILQ_NEXT(wp, entry);
 	if (wp == NULL)
 		return (0); /* one pane */
 	if (TAILQ_NEXT(wp, entry) != NULL)
@@ -155,10 +158,10 @@ screen_redraw_pane_border(struct screen_redraw_ctx *ctx, struct window_pane *wp,
 	 */
 	if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= ey) {
 		if (sb_pos == PANE_SCROLLBARS_LEFT) {
-			if (wp->xoff - sb_w == 0 && px == wp->sx + sb_w)
+			if (wp->xoff == (u_int)sb_w && px == wp->sx + sb_w)
 				if (!hsplit || (hsplit && py <= wp->sy / 2))
 					return (SCREEN_REDRAW_BORDER_RIGHT);
-			if (wp->xoff - sb_w != 0) {
+			if (wp->xoff > (u_int)sb_w) {
 				if (px == wp->xoff - sb_w - 1 &&
 				    (!hsplit || (hsplit && py > wp->sy / 2)))
 					return (SCREEN_REDRAW_BORDER_LEFT);
@@ -571,7 +574,7 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 			/* Right not visible. */
 			i = 0;
 			x = xoff - ctx->ox;
-			width = size - x;
+			width = ctx->sx - x;
 		}
 
 		if (ctx->statustop)
