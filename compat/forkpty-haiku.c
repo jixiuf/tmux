@@ -59,7 +59,7 @@ forkpty(int *master, char *name, struct termios *tio, struct winsize *ws)
 
 		if (tio != NULL && tcsetattr(slave, TCSAFLUSH, tio) == -1)
 			fatal("tcsetattr failed");
-		if (ioctl(slave, TIOCSWINSZ, ws) == -1)
+		if (ws != NULL && ioctl(slave, TIOCSWINSZ, ws) == -1)
 			fatal("ioctl failed");
 
 		dup2(slave, 0);

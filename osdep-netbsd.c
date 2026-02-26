@@ -90,7 +90,7 @@ retry:
 	mib[5] = 0;
 
 	if (sysctl(mib, __arraycount(mib), NULL, &len, NULL, 0) == -1)
-		return (NULL);
+		goto error;
 
 	if ((newbuf = realloc(buf, len)) == NULL)
 		goto error;
