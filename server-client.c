@@ -243,7 +243,7 @@ server_client_check_nested(struct client *c)
 		return (0);
 
 	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-		if (strcmp(wp->tty, c->ttyname) == 0)
+		if (c->ttyname != NULL && strcmp(wp->tty, c->ttyname) == 0)
 			return (1);
 	}
 	return (0);
@@ -490,6 +490,9 @@ server_client_lost(struct client *c)
 
 	free(c->title);
 	free((void *)c->cwd);
+	free(c->path);
+	free(c->exit_session);
+	free(c->exit_message);
 
 	evtimer_del(&c->repeat_timer);
 	evtimer_del(&c->click_timer);
@@ -619,7 +622,7 @@ server_client_check_mouse_in_pane(struct window_pane *wp, u_int px, u_int py,
 	struct options		*wo = w->options;
 	struct window_pane	*fwp;
 	int			 pane_status, sb, sb_pos, sb_w, sb_pad;
-	u_int			 line, sl_top, sl_bottom;
+	u_int			 line = 0, sl_top, sl_bottom;
 
 	sb = options_get_number(wo, "pane-scrollbars");
 	sb_pos = options_get_number(wo, "pane-scrollbars-position");
@@ -707,7 +710,7 @@ server_client_check_mouse(struct client *c, struct key_event *event)
 	struct window_pane	*wp, *fwp;
 	u_int			 x, y, b, sx, sy, px, py, sl_mpos = 0;
 	int			 ignore = 0;
-	key_code		 key;
+	key_code		 key = KEYC_UNKNOWN;
 	struct timeval		 tv;
 	struct style_range	*sr;
 	enum { NOTYPE,
@@ -3035,7 +3038,11 @@ server_client_reset_state(struct client *c)
 		if (n == 0)
 			cy = status_prompt_line_at(c);
 		else {
-			n = status_line_size(c) - status_prompt_line_at(c);
+			if (status_line_size(c) > status_prompt_line_at(c))
+				n = status_line_size(c) -
+				    status_prompt_line_at(c);
+			else
+				n = 1;
 			if (n <= tty->sy)
 				cy = tty->sy - n;
 			else
@@ -4041,6 +4048,7 @@ server_client_print(struct client *c, int parse, struct evbuffer *evb)
 			msg = EVBUFFER_DATA(evb);
 			if (msg[size - 1] != '\0')
 				evbuffer_add(evb, "", 1);
+			msg = EVBUFFER_DATA(evb);
 		}
 	}
 	log_debug("%s: %s", __func__, msg);
