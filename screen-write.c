@@ -102,7 +102,9 @@ screen_write_set_cursor(struct screen_write_ctx *ctx, int cx, int cy)
 		s->cx = cx;
 	}
 	if (cy != -1) {
-		if ((u_int)cy > screen_size_y(s) - 1)
+		if (screen_size_y(s) == 0)
+			cy = 0;
+		else if ((u_int)cy > screen_size_y(s) - 1)
 			cy = screen_size_y(s) - 1;
 		s->cy = cy;
 	}
@@ -132,6 +134,9 @@ static int
 screen_write_set_client_cb(struct tty_ctx *ttyctx, struct client *c)
 {
 	struct window_pane	*wp = ttyctx->arg;
+
+	if (c->session == NULL)
+		return (0);
 
 	if (ttyctx->allow_invisible_panes) {
 		if (session_has(c->session, wp->window))
@@ -242,8 +247,11 @@ screen_write_free_list(struct screen *s)
 {
 	u_int	y;
 
-	for (y = 0; y < screen_size_y(s); y++)
+	for (y = 0; y < screen_size_y(s); y++) {
+		TAILQ_CONCAT(&screen_write_citem_freelist,
+		    &s->write_list[y].items, entry);
 		free(s->write_list[y].data);
+	}
 	free(s->write_list);
 }
 
@@ -415,6 +423,14 @@ screen_write_text(struct screen_write_ctx *ctx, u_int cx, u_int width,
 	text = utf8_fromcstr(tmp);
 	free(tmp);
 
+	if (s->cx > cx + width) {
+		free(text);
+		return (0);
+	}
+	if (lines == 0) {
+		free(text);
+		return (0);
+	}
 	left = (cx + width) - s->cx;
 	for (;;) {
 		/* Find the end of what can fit on the line. */
@@ -656,6 +672,9 @@ screen_write_hline(struct screen_write_ctx *ctx, u_int nx, int left, int right,
 	struct grid_cell	 gc;
 	u_int			 cx, cy, i;
 
+	if (nx < 2)
+		return;
+
 	cx = s->cx;
 	cy = s->cy;
 
@@ -691,6 +710,9 @@ screen_write_vline(struct screen_write_ctx *ctx, u_int ny, int top, int bottom)
 	struct screen		*s = ctx->s;
 	struct grid_cell	 gc;
 	u_int			 cx, cy, i;
+
+	if (ny < 2)
+		return;
 
 	cx = s->cx;
 	cy = s->cy;
@@ -768,6 +790,9 @@ screen_write_box(struct screen_write_ctx *ctx, u_int nx, u_int ny,
 	struct screen		*s = ctx->s;
 	struct grid_cell         gc;
 	u_int			 cx, cy, i;
+
+	if (nx < 4 || ny < 2)
+		return;
 
 	cx = s->cx;
 	cy = s->cy;
