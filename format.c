@@ -1149,7 +1149,7 @@ format_cb_pane_at_bottom(struct format_tree *ft)
 
 	status = options_get_number(w->options, "pane-border-status");
 	if (status == PANE_STATUS_BOTTOM)
-		flag = (wp->yoff + wp->sy == w->sy - 1);
+		flag = (w->sy > 0 && wp->yoff + wp->sy == w->sy - 1);
 	else
 		flag = (wp->yoff + wp->sy == w->sy);
 	xasprintf(&value, "%d", flag);
@@ -2006,8 +2006,11 @@ format_cb_pane_at_right(struct format_tree *ft)
 static void *
 format_cb_pane_bottom(struct format_tree *ft)
 {
-	if (ft->wp != NULL)
+	if (ft->wp != NULL) {
+		if (ft->wp->sy == 0)
+			return (format_printf("%u", ft->wp->yoff));
 		return (format_printf("%u", ft->wp->yoff + ft->wp->sy - 1));
+	}
 	return (NULL);
 }
 
@@ -2246,8 +2249,11 @@ format_cb_pane_pipe(struct format_tree *ft)
 static void *
 format_cb_pane_right(struct format_tree *ft)
 {
-	if (ft->wp != NULL)
+	if (ft->wp != NULL) {
+		if (ft->wp->sx == 0)
+			return (format_printf("%u", ft->wp->xoff));
 		return (format_printf("%u", ft->wp->xoff + ft->wp->sx - 1));
+	}
 	return (NULL);
 }
 
@@ -2363,8 +2369,8 @@ format_cb_session_activity_flag(struct format_tree *ft)
 		RB_FOREACH(wl, winlinks, &ft->s->windows) {
 			if (wl->flags & WINLINK_ACTIVITY)
 				return (xstrdup("1"));
-			return (xstrdup("0"));
 		}
+		return (xstrdup("0"));
 	}
 	return (NULL);
 }
@@ -2379,8 +2385,8 @@ format_cb_session_bell_flag(struct format_tree *ft)
 		RB_FOREACH(wl, winlinks, &ft->s->windows) {
 			if (wl->flags & WINLINK_BELL)
 				return (xstrdup("1"));
-			return (xstrdup("0"));
 		}
+		return (xstrdup("0"));
 	}
 	return (NULL);
 }
@@ -2395,8 +2401,8 @@ format_cb_session_silence_flag(struct format_tree *ft)
 		RB_FOREACH(wl, winlinks, &ft->s->windows) {
 			if (wl->flags & WINLINK_SILENCE)
 				return (xstrdup("1"));
-			return (xstrdup("0"));
 		}
+		return (xstrdup("0"));
 	}
 	return (NULL);
 }
@@ -4137,6 +4143,9 @@ format_add_modifier(struct format_modifier **list, u_int *count,
 {
 	struct format_modifier *fm;
 
+	if (n > 2)
+		return;
+
 	*list = xreallocarray(*list, (*count) + 1, sizeof **list);
 	fm = &(*list)[(*count)++];
 
@@ -4196,7 +4205,8 @@ format_build_modifiers(struct format_expand_state *es, const char **s,
 		}
 
 		/* Then try double character with no arguments. */
-		if ((memcmp("||", cp, 2) == 0 ||
+		if (cp[1] != '\0' &&
+		    (memcmp("||", cp, 2) == 0 ||
 		    memcmp("&&", cp, 2) == 0 ||
 		    memcmp("!!", cp, 2) == 0 ||
 		    memcmp("!=", cp, 2) == 0 ||
@@ -4455,6 +4465,7 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 		strlcat(value, expanded, valuelen);
 		free(expanded);
 	}
+	free(l);
 
 	free(active);
 	free(all);
@@ -4540,6 +4551,7 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		strlcat(value, expanded, valuelen);
 		free(expanded);
 	}
+	free(l);
 
 	free(active);
 	free(all);
@@ -4599,6 +4611,7 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 		strlcat(value, expanded, valuelen);
 		free(expanded);
 	}
+	free(l);
 
 	free(active);
 	free(all);
@@ -4642,6 +4655,7 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 		strlcat(value, expanded, valuelen);
 		free(expanded);
 	}
+	free(l);
 
 	return (value);
 }
@@ -5293,6 +5307,7 @@ done:
 		if (marker != NULL && strcmp(new, value) != 0) {
 			free(value);
 			xasprintf(&value, "%s%s", new, marker);
+			free(new);
 		} else {
 			free(value);
 			value = new;
@@ -5303,6 +5318,7 @@ done:
 		if (marker != NULL && strcmp(new, value) != 0) {
 			free(value);
 			xasprintf(&value, "%s%s", marker, new);
+			free(new);
 		} else {
 			free(value);
 			value = new;
@@ -5400,6 +5416,7 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 		if (format_logging(ft) && strcmp(expanded, fmt) != 0)
 			format_log(es, "after time expanded: %s", expanded);
 		fmt = expanded;
+		style_end = NULL;
 	}
 
 	len = 64;
