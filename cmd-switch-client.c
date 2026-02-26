@@ -60,7 +60,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmdq_item *item)
 	struct window_pane	*wp;
 	const char		*tablename;
 	struct key_table	*table;
-	struct sort_criteria	 sort_crit;
+	struct sort_criteria	 sort_crit = { 0 };
 
 	if (tflag != NULL &&
 	    (tflag[strcspn(tflag, ":.%")] != '\0' || strcmp(tflag, "=") == 0)) {

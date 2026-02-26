@@ -62,7 +62,7 @@ cmd_list_clients_exec(struct cmd *self, struct cmdq_item *item)
 	u_int			  i, n;
 	char			 *line, *expanded;
 	int			  flag;
-	struct sort_criteria	  sort_crit;
+	struct sort_criteria	  sort_crit = { 0 };
 
 	if (args_has(args, 't'))
 		s = target->s;

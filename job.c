@@ -173,6 +173,8 @@ job_run(const char *cmd, int argc, char **argv, struct environ *e,
 					fatal("dup2 failed");
 				if (nullfd != STDERR_FILENO)
 					close(nullfd);
+				do_close = do_close &&
+				    out[1] != STDERR_FILENO;
 			}
 			if (do_close)
 				close(out[1]);

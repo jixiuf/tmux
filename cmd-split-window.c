@@ -120,6 +120,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 	lc = layout_split_pane(wp, type, size, flags);
 	if (lc == NULL) {
 		cmdq_error(item, "no space for new pane");
+		window_pop_zoom(wp->window);
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -157,6 +158,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 		layout_destroy_cell(w, lc, &w->layout_root);
 		layout_fix_offsets(w);
 		layout_fix_panes(w, NULL);
+		window_pop_zoom(wp->window);
 		return (CMD_RETURN_ERROR);
 	}
 	if (input) {
@@ -170,6 +172,7 @@ cmd_split_window_exec(struct cmd *self, struct cmdq_item *item)
 			if (sc.argv != NULL)
 				cmd_free_argv(sc.argc, sc.argv);
 			environ_free(sc.environ);
+			window_pop_zoom(wp->window);
 			return (CMD_RETURN_ERROR);
 		case 1:
 			input = 0;

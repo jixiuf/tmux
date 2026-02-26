@@ -59,7 +59,7 @@ cmd_list_sessions_exec(struct cmd *self, struct cmdq_item *item)
 	const char		 *template, *filter;
 	char			 *line, *expanded;
 	int			  flag;
-	struct sort_criteria	  sort_crit;
+	struct sort_criteria	  sort_crit = { 0 };
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_SESSIONS_TEMPLATE;

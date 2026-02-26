@@ -125,7 +125,12 @@ cmd_break_pane_exec(struct cmd *self, struct cmdq_item *item)
 
 	if (idx == -1)
 		idx = -1 - options_get_number(dst_s->options, "base-index");
-	wl = session_attach(dst_s, w, idx, &cause); /* can't fail */
+	wl = session_attach(dst_s, w, idx, &cause);
+	if (wl == NULL) {
+		cmdq_error(item, "%s", cause);
+		free(cause);
+		return (CMD_RETURN_ERROR);
+	}
 	if (!args_has(args, 'd')) {
 		session_select(dst_s, wl->idx);
 		cmd_find_from_session(current, dst_s, 0);

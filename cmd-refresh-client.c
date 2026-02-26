@@ -237,7 +237,8 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 					tc->pan_ox = 0;
 			} else if (args_has(args, 'R')) {
 				tc->pan_ox += adjust;
-				if (tc->pan_ox > w->sx - tty->osx)
+				if (w->sx >= tty->osx &&
+				    tc->pan_ox > w->sx - tty->osx)
 					tc->pan_ox = w->sx - tty->osx;
 			} else if (args_has(args, 'U')) {
 				if (tc->pan_oy > adjust)
@@ -246,7 +247,8 @@ cmd_refresh_client_exec(struct cmd *self, struct cmdq_item *item)
 					tc->pan_oy = 0;
 			} else if (args_has(args, 'D')) {
 				tc->pan_oy += adjust;
-				if (tc->pan_oy > w->sy - tty->osy)
+				if (w->sy >= tty->osy &&
+				    tc->pan_oy > w->sy - tty->osy)
 					tc->pan_oy = w->sy - tty->osy;
 			}
 		}

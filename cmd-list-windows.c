@@ -67,7 +67,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmdq_item *item)
 	const char		*template, *filter;
 	char			*line, *expanded;
 	int			 flag;
-	struct sort_criteria	 sort_crit;
+	struct sort_criteria	 sort_crit = { 0 };
 
 	template = args_get(args, 'F');
 	filter = args_get(args, 'f');

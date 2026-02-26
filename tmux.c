@@ -284,7 +284,7 @@ get_timer(void)
 const char *
 sig2name(int signo)
 {
-     static char	s[11];
+     static char	s[12];
 
 #ifdef HAVE_SYS_SIGNAME
      if (signo > 0 && signo < NSIG)

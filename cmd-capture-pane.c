@@ -156,24 +156,28 @@ cmd_capture_pane_history(struct args *args, struct cmdq_item *item,
 			top = 0;
 		else
 			top = gd->hsize + n;
-		if (top > gd->hsize + gd->sy - 1)
+		if (gd->hsize + gd->sy > 0 &&
+		    top > gd->hsize + gd->sy - 1)
 			top = gd->hsize + gd->sy - 1;
 	}
 
 	Eflag = args_get(args, 'E');
 	if (Eflag != NULL && strcmp(Eflag, "-") == 0)
-		bottom = gd->hsize + gd->sy - 1;
+		bottom = gd->hsize + gd->sy > 0 ?
+		    gd->hsize + gd->sy - 1 : 0;
 	else {
 		n = args_strtonum_and_expand(args, 'E', INT_MIN, SHRT_MAX,
 			item, &cause);
 		if (cause != NULL) {
-			bottom = gd->hsize + gd->sy - 1;
+			bottom = gd->hsize + gd->sy > 0 ?
+			    gd->hsize + gd->sy - 1 : 0;
 			free(cause);
 		} else if (n < 0 && (u_int) -n > gd->hsize)
 			bottom = 0;
 		else
 			bottom = gd->hsize + n;
-		if (bottom > gd->hsize + gd->sy - 1)
+		if (gd->hsize + gd->sy > 0 &&
+		    bottom > gd->hsize + gd->sy - 1)
 			bottom = gd->hsize + gd->sy - 1;
 	}
 

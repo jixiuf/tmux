@@ -53,7 +53,7 @@ cmd_list_buffers_exec(struct cmd *self, struct cmdq_item *item)
 	char			 *line, *expanded;
 	int			  flag;
 	u_int			  i, n;
-	struct sort_criteria	  sort_crit;
+	struct sort_criteria	  sort_crit = { 0 };
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = LIST_BUFFERS_TEMPLATE;

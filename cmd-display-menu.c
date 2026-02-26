@@ -195,7 +195,7 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
 			format_add(ft, "popup_mouse_centre_x", "%u", 0);
 		else
 			format_add(ft, "popup_mouse_centre_x", "%ld", n);
-		n = event->m.y - h / 2;
+		n = (long)event->m.y - (long)(h / 2);
 		if (n + h >= tty->sy) {
 			format_add(ft, "popup_mouse_centre_y", "%u",
 			    tty->sy - h);
@@ -206,7 +206,7 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
 			format_add(ft, "popup_mouse_top", "%u", tty->sy - 1);
 		else
 			format_add(ft, "popup_mouse_top", "%ld", n);
-		n = event->m.y - h;
+		n = (long)event->m.y - (long)h;
 		if (n < 0)
 			format_add(ft, "popup_mouse_bottom", "%u", 0);
 		else
@@ -220,8 +220,15 @@ cmd_display_menu_get_pos(struct client *tc, struct cmdq_item *item,
 		format_add(ft, "popup_pane_top", "%u", tty->sy - h);
 	else
 		format_add(ft, "popup_pane_top", "%ld", n);
-	format_add(ft, "popup_pane_bottom", "%u", top + wp->yoff + wp->sy - oy);
-	format_add(ft, "popup_pane_left", "%u", wp->xoff - ox);
+	if ((u_int)top + wp->yoff + wp->sy >= oy)
+		format_add(ft, "popup_pane_bottom", "%u",
+		    (u_int)top + wp->yoff + wp->sy - oy);
+	else
+		format_add(ft, "popup_pane_bottom", "%u", 0);
+	if (wp->xoff >= ox)
+		format_add(ft, "popup_pane_left", "%u", wp->xoff - ox);
+	else
+		format_add(ft, "popup_pane_left", "%u", 0);
 	n = (long)wp->xoff + wp->sx - ox - w;
 	if (n < 0)
 		format_add(ft, "popup_pane_right", "%u", 0);
@@ -373,7 +380,7 @@ cmd_display_menu_exec(struct cmd *self, struct cmdq_item *item)
 		flags |= MENU_NOMOUSE;
 	if (menu_display(menu, flags, starting_choice, item, px, py, tc, lines,
 	    style, selected_style, border_style, target, NULL, NULL) != 0)
-		return (CMD_RETURN_NORMAL);
+		goto out;
 	return (CMD_RETURN_WAIT);
 
 out:

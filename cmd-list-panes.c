@@ -103,7 +103,7 @@ cmd_list_panes_window(struct cmd *self, struct session *s, struct winlink *wl,
 	const char		*template, *filter;
 	char			*line, *expanded;
 	int			 flag;
-	struct sort_criteria	 sort_crit;
+	struct sort_criteria	 sort_crit = { 0 };
 
 	template = args_get(args, 'F');
 	if (template == NULL) {

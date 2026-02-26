@@ -278,6 +278,7 @@ key_string_lookup_string(const char *string)
 			return (KEYC_UNKNOWN);
 		if (u < 32)
 			return (u);
+		wctomb(NULL, 0);
 		mlen = wctomb(m, u);
 		if (mlen <= 0 || mlen > MB_LEN_MAX)
 			return (KEYC_UNKNOWN);
@@ -478,6 +479,8 @@ key_string_lookup_key(key_code key, int with_flags)
 	} else if (key == 127)
 		xsnprintf(tmp, sizeof tmp, "C-?");
 	else if (key >= 128)
+		xsnprintf(tmp, sizeof tmp, "\\%llo", key);
+	else
 		xsnprintf(tmp, sizeof tmp, "\\%llo", key);
 
 	strlcat(out, tmp, sizeof out);
