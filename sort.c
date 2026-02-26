@@ -107,9 +107,16 @@ sort_client_cmp(const void *a0, const void *b0)
 		result = strcmp(ca->name, cb->name);
 		break;
 	case SORT_SIZE:
-		result = ca->tty.sx - cb->tty.sx;
-		if (result == 0)
-			result = ca->tty.sy - cb->tty.sy;
+		if (ca->tty.sx < cb->tty.sx)
+			result = -1;
+		else if (ca->tty.sx > cb->tty.sx)
+			result = 1;
+		if (result == 0) {
+			if (ca->tty.sy < cb->tty.sy)
+				result = -1;
+			else if (ca->tty.sy > cb->tty.sy)
+				result = 1;
+		}
 		break;
 	case SORT_CREATION:
 		if (timercmp(&ca->creation_time, &cb->creation_time, >))
@@ -150,7 +157,10 @@ sort_session_cmp(const void *a0, const void *b0)
 
 	switch (sort_crit->order) {
 	case SORT_INDEX:
-		result = sa->id - sb->id;
+		if (sa->id < sb->id)
+			result = -1;
+		else if (sa->id > sb->id)
+			result = 1;
 		break;
 	case SORT_CREATION:
 		if (timercmp(&sa->creation_time, &sb->creation_time, >)) {
@@ -201,18 +211,30 @@ sort_pane_cmp(const void *a0, const void *b0)
 
 	switch (sort_crit->order) {
 	case SORT_ACTIVITY:
-		result = a->active_point - b->active_point;
+		if (a->active_point < b->active_point)
+			result = -1;
+		else if (a->active_point > b->active_point)
+			result = 1;
 		break;
 	case SORT_CREATION:
-		result = a->id - b->id;
+		if (a->id < b->id)
+			result = -1;
+		else if (a->id > b->id)
+			result = 1;
 		break;
 	case SORT_SIZE:
-		result = a->sx * a->sy - b->sx * b->sy;
+		if (a->sx * a->sy < b->sx * b->sy)
+			result = -1;
+		else if (a->sx * a->sy > b->sx * b->sy)
+			result = 1;
 		break;
 	case SORT_INDEX:
 		window_pane_index(a, &ai);
 		window_pane_index(b, &bi);
-		result = ai - bi;
+		if (ai < bi)
+			result = -1;
+		else if (ai > bi)
+			result = 1;
 		break;
 	case SORT_NAME:
 		result = strcmp(a->screen->title, b->screen->title);
@@ -245,7 +267,10 @@ sort_winlink_cmp(const void *a0, const void *b0)
 
 	switch (sort_crit->order) {
 	case SORT_INDEX:
-		result = wla->idx - wlb->idx;
+		if (wla->idx < wlb->idx)
+			result = -1;
+		else if (wla->idx > wlb->idx)
+			result = 1;
 		break;
 	case SORT_CREATION:
 		if (timercmp(&wa->creation_time, &wb->creation_time, >)) {
@@ -271,7 +296,10 @@ sort_winlink_cmp(const void *a0, const void *b0)
 		result = strcmp(wa->name, wb->name);
 		break;
 	case SORT_SIZE:
-		result = wa->sx * wa->sy - wb->sx * wb->sy;
+		if (wa->sx * wa->sy < wb->sx * wb->sy)
+			result = -1;
+		else if (wa->sx * wa->sy > wb->sx * wb->sy)
+			result = 1;
 		break;
 	case SORT_MODIFIER:
 	case SORT_ORDER:
