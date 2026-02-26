@@ -79,7 +79,7 @@ static void	tty_write_one(void (*)(struct tty *, const struct tty_ctx *),
 
 #define TTY_BLOCK_INTERVAL (100000 /* 100 milliseconds */)
 #define TTY_BLOCK_START(tty) (1 + ((size_t)(tty)->sx * (tty)->sy) * 8)
-#define TTY_BLOCK_STOP(tty) (1 + ((tty)->sx * (tty)->sy) / 8)
+#define TTY_BLOCK_STOP(tty) (1 + ((size_t)(tty)->sx * (tty)->sy) / 8)
 
 #define TTY_QUERY_TIMEOUT 5
 #define TTY_REQUEST_LIMIT 30
@@ -157,6 +157,10 @@ tty_resize(struct tty *tty)
 void
 tty_set_size(struct tty *tty, u_int sx, u_int sy, u_int xpixel, u_int ypixel)
 {
+	if (sx == 0)
+		sx = 80;
+	if (sy == 0)
+		sy = 24;
 	tty->sx = sx;
 	tty->sy = sy;
 	tty->xpixel = xpixel;
@@ -425,18 +429,23 @@ tty_repeat_requests(struct tty *tty, int force)
 {
 	struct client	*c = tty->client;
 	time_t		 t = time(NULL);
-	u_int		 n = t - tty->last_requests;
+	time_t		 n;
 
 	if (~tty->flags & TTY_STARTED)
 		return;
 
+	if (t < tty->last_requests)
+		n = 0;
+	else
+		n = t - tty->last_requests;
+
 	if (!force && n <= TTY_REQUEST_LIMIT) {
-		log_debug("%s: not repeating requests (%u seconds)", c->name,
-		    n);
+		log_debug("%s: not repeating requests (%lld seconds)", c->name,
+		    (long long)n);
 		return;
 	}
-	log_debug("%s: %srepeating requests (%u seconds)", c->name,
-	    force ? "(force) " : "" , n);
+	log_debug("%s: %srepeating requests (%lld seconds)", c->name,
+	    force ? "(force) " : "" , (long long)n);
 	tty->last_requests = t;
 
 	if (tty->term->flags & TERM_VT100LIKE) {
@@ -952,11 +961,16 @@ tty_window_bigger(struct tty *tty)
 	struct client	*c = tty->client;
 	struct window	*w;
 
+	u_int		 lines;
+
 	if (c->session == NULL || c->session->curw == NULL)
 		return (0);
 	w = c->session->curw->window;
 
-	return (tty->sx < w->sx || tty->sy - status_line_size(c) < w->sy);
+	lines = status_line_size(c);
+	if (lines > tty->sy)
+		lines = tty->sy;
+	return (tty->sx < w->sx || tty->sy - lines < w->sy);
 }
 
 /* What offset should this window be drawn at? */
@@ -1103,6 +1117,8 @@ tty_update_client_offset(struct client *c)
 static int
 tty_large_region(__unused struct tty *tty, const struct tty_ctx *ctx)
 {
+	if (ctx->orlower < ctx->orupper)
+		return (0);
 	return (ctx->orlower - ctx->orupper >= ctx->sy / 2);
 }
 
@@ -1169,6 +1185,8 @@ tty_clamp_line(struct tty *tty, const struct tty_ctx *ctx, u_int px, u_int py,
 	u_int	xoff = ctx->rxoff + px;
 
 	if (!tty_is_visible(tty, ctx, px, py, nx, 1))
+		return (0);
+	if (ctx->yoff + py < ctx->woy)
 		return (0);
 	*ry = ctx->yoff + py - ctx->woy;
 
@@ -1923,6 +1941,8 @@ tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
 	u_int	px, py, nx, ny;
 
+	if (ctx->sy == 0)
+		return;
 	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
 	    ctx->s->hyperlinks);
 
@@ -1948,6 +1968,8 @@ tty_cmd_clearstartofscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
 	u_int	px, py, nx, ny;
 
+	if (ctx->sy == 0)
+		return;
 	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
 	    ctx->s->hyperlinks);
 
@@ -1973,6 +1995,8 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
 	u_int	px, py, nx, ny;
 
+	if (ctx->sy == 0)
+		return;
 	tty_default_attributes(tty, &ctx->defaults, ctx->palette, ctx->bg,
 	    ctx->s->hyperlinks);
 
@@ -1992,6 +2016,8 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 {
 	u_int	i, j;
 
+	if (ctx->sy == 0)
+		return;
 	if (ctx->bigger) {
 		ctx->redraw_cb(ctx);
 		return;
@@ -2297,6 +2323,8 @@ static void
 tty_region_pane(struct tty *tty, const struct tty_ctx *ctx, u_int rupper,
     u_int rlower)
 {
+	if (ctx->yoff + rupper < ctx->woy)
+		return;
 	tty_region(tty, ctx->yoff + rupper - ctx->woy,
 	    ctx->yoff + rlower - ctx->woy);
 }
@@ -2341,6 +2369,8 @@ tty_margin_off(struct tty *tty)
 static void
 tty_margin_pane(struct tty *tty, const struct tty_ctx *ctx)
 {
+	if (ctx->xoff < ctx->wox)
+		return;
 	tty_margin(tty, ctx->xoff - ctx->wox,
 	    ctx->xoff + ctx->sx - 1 - ctx->wox);
 }
