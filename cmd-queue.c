@@ -882,9 +882,11 @@ cmdq_error(struct cmdq_item *item, const char *fmt, ...)
 	log_debug("%s: %s", __func__, msg);
 
 	if (c == NULL) {
-		if (cmd != NULL)
+		if (cmd != NULL) {
 			cmd_get_source(cmd, &file, &line);
-		else {
+			if (file == NULL)
+				file = "unknown";
+		} else {
 			file = "unknown";
 			line = 0;
 		}

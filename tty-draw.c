@@ -99,7 +99,7 @@ tty_draw_line_get_empty(const struct grid_cell *gc, u_int nx)
 		if (gc->flags & GRID_FLAG_CLEARED)
 			empty = 1;
 		else if (gc->flags & GRID_FLAG_TAB)
-			empty = gc->data.width;
+			empty = (gc->data.width > nx) ? nx : gc->data.width;
 		else if (gc->data.size == 1 && *gc->data.data == ' ')
 			empty = 1;
 	}
@@ -215,7 +215,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx,
 	current_state = TTY_DRAW_LINE_FIRST;
 	for (;;) {
 		/* Work out the next state. */
-		if (i == nx) {
+		if (i >= nx) {
 			/*
 			 * If this is the last cell, we are done. But we need to
 			 * go through the loop again to flush anything in
