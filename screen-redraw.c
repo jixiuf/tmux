@@ -360,9 +360,11 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 			if (!window_pane_visible(wp))
 				goto next1;
 
-			if (pane_status == PANE_STATUS_TOP)
+			if (pane_status == PANE_STATUS_TOP) {
+				if (wp->yoff == 0)
+					goto next1;
 				line = wp->yoff - 1;
-			else
+			} else
 				line = wp->yoff + sy;
 			right = wp->xoff + 2 + wp->status_size - 1;
 
@@ -386,9 +388,11 @@ screen_redraw_check_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py,
 
 		/* Check if CELL_SCROLLBAR */
 		if (window_pane_show_scrollbar(wp, pane_scrollbars)) {
-			if (pane_status == PANE_STATUS_TOP)
+			if (pane_status == PANE_STATUS_TOP) {
+				if (wp->yoff == 0)
+					goto next2;
 				line = wp->yoff - 1;
-			else
+			} else
 				line = wp->yoff + wp->sy;
 
 			/*
@@ -487,9 +491,12 @@ screen_redraw_make_pane_status(struct client *c, struct window_pane *wp,
 
 	for (i = 0; i < width; i++) {
 		px = wp->xoff + 2 + i;
-		if (pane_status == PANE_STATUS_TOP)
-			py = wp->yoff - 1;
-		else
+		if (pane_status == PANE_STATUS_TOP) {
+			if (wp->yoff == 0)
+				py = 0;
+			else
+				py = wp->yoff - 1;
+		} else
 			py = wp->yoff + wp->sy;
 		cell_type = screen_redraw_type_of_cell(rctx, px, py);
 		screen_redraw_border_set(w, wp, pane_lines, cell_type, &gc);
@@ -531,9 +538,11 @@ screen_redraw_draw_pane_status(struct screen_redraw_ctx *ctx)
 		s = &wp->status_screen;
 
 		size = wp->status_size;
-		if (ctx->pane_status == PANE_STATUS_TOP)
+		if (ctx->pane_status == PANE_STATUS_TOP) {
+			if (wp->yoff == 0)
+				continue;
 			yoff = wp->yoff - 1;
-		else
+		} else
 			yoff = wp->yoff + wp->sy;
 		xoff = wp->xoff + 2;
 
@@ -1020,7 +1029,7 @@ screen_redraw_draw_pane(struct screen_redraw_ctx *ctx, struct window_pane *wp)
 		for (k = 0; k < r->used; k++) {
 			rr = &r->ranges[k];
 			if (rr->nx != 0) {
-				tty_draw_line(tty, s, rr->px - wp->xoff, j,
+				tty_draw_line(tty, s, i + (rr->px - x), j,
 				    rr->nx, rr->px, y, &defaults, palette);
 			}
 		}
@@ -1128,11 +1137,17 @@ screen_redraw_draw_scrollbar(struct screen_redraw_ctx *ctx,
 	slgc.bg = gc.fg;
 
 	imax = sb_w + sb_pad;
-	if ((int)imax + sb_x > sx)
+	if ((int)imax + sb_x > sx) {
+		if (sb_x >= sx)
+			return;
 		imax = sx - sb_x;
+	}
 	jmax = sb_h;
-	if ((int)jmax + sb_y > sy)
+	if ((int)jmax + sb_y > sy) {
+		if (sb_y >= sy)
+			return;
 		jmax = sy - sb_y;
+	}
 
 	for (j = 0; j < jmax; j++) {
 		py = sb_y + j;

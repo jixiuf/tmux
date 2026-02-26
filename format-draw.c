@@ -130,7 +130,8 @@ format_draw_put_list(struct screen_write_ctx *octx,
 
 	/* If there is enough space for the list, draw it entirely. */
 	if (width >= list->cx) {
-		format_draw_put(octx, ocx, ocy, list, frs, offset, 0, width);
+		format_draw_put(octx, ocx, ocy, list, frs, offset, 0,
+		    list->cx);
 		return;
 	}
 

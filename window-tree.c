@@ -320,14 +320,15 @@ window_tree_build_session(struct session *s, void *modedata,
 	if (wl == NULL)
 		return;
 
+	if (wl->window->active == NULL)
+		return;
+
 	item = window_tree_add_item(data);
 	item->type = WINDOW_TREE_SESSION;
 	item->session = s->id;
 	item->winlink = -1;
 	item->pane = -1;
 
-	if (wl->window->active == NULL)
-		return;
 	ft = format_create(NULL, NULL, FORMAT_PANE|wl->window->active->id, 0);
 	format_defaults(ft, NULL, s, NULL, NULL);
 	text = format_expand(ft, data->format);
@@ -800,6 +801,10 @@ window_tree_get_key(void *modedata, void *itemdata, u_int line)
 
 	ft = format_create(NULL, NULL, FORMAT_NONE, 0);
 	window_tree_pull_item(item, &s, &wl, &wp);
+	if (s == NULL) {
+		format_free(ft);
+		return (KEYC_NONE);
+	}
 	if (item->type == WINDOW_TREE_SESSION)
 		format_defaults(ft, NULL, s, NULL, NULL);
 	else if (item->type == WINDOW_TREE_WINDOW)
@@ -1247,7 +1252,8 @@ again:
 		break;
 	case 'm':
 		window_tree_pull_item(item, &ns, &nwl, &nwp);
-		server_set_marked(ns, nwl, nwp);
+		if (ns != NULL && nwl != NULL && nwp != NULL)
+			server_set_marked(ns, nwl, nwp);
 		mode_tree_build(data->data);
 		break;
 	case 'M':

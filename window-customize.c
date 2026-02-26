@@ -405,6 +405,8 @@ window_customize_build_options(struct window_customize_modedata *data,
 			o = options_get(oo1, list[i]);
 		if (o == NULL)
 			o = options_get(oo0, list[i]);
+		if (o == NULL)
+			continue;
 		if (options_owner(o) == oo2)
 			scope = scope2;
 		else if (options_owner(o) == oo1)
@@ -812,6 +814,7 @@ window_customize_draw_option(struct window_customize_modedata *data,
 	if (wo != NULL && options_owner(o) != wo) {
 		parent = options_get_only(wo, name);
 		if (parent != NULL) {
+			free(value);
 			value = options_to_string(parent, -1 , 0);
 			if (!screen_write_text(ctx, s->cx, sx,
 			    sy - (s->cy - cy), 0, &grid_default_cell,
@@ -823,6 +826,7 @@ window_customize_draw_option(struct window_customize_modedata *data,
 	if (go != NULL && options_owner(o) != go) {
 		parent = options_get_only(go, name);
 		if (parent != NULL) {
+			free(value);
 			value = options_to_string(parent, -1 , 0);
 			if (!screen_write_text(ctx, s->cx, sx,
 			    sy - (s->cy - cy), 0, &grid_default_cell,
