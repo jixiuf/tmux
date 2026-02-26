@@ -1318,7 +1318,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 	case '\011':	/* HT */
 		/* Don't tab beyond the end of the line. */
 		cx = s->cx;
-		if (cx >= screen_size_x(s) - 1)
+		if (screen_size_x(s) == 0 || cx >= screen_size_x(s) - 1)
 			break;
 
 		/* Find the next tab point, or use the last column if none. */
@@ -1478,6 +1478,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_CBT:
 		/* Find the previous tab point, n times. */
 		cx = s->cx;
+		if (screen_size_x(s) == 0)
+			break;
 		if (cx > screen_size_x(s) - 1)
 			cx = screen_size_x(s) - 1;
 		n = input_get(ictx, 0, 1, 1);
@@ -1813,7 +1815,8 @@ input_csi_dispatch(struct input_ctx *ictx)
 				bit_clear(s->tabs, s->cx);
 			break;
 		case 3:
-			bit_nclear(s->tabs, 0, screen_size_x(s) - 1);
+			if (screen_size_x(s) > 0)
+				bit_nclear(s->tabs, 0, screen_size_x(s) - 1);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -2359,7 +2362,7 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 			case 0:
 			case 2:
 				screen_pop_title(sctx->s);
-				if (wp == NULL)
+				if (wp == NULL || w == NULL)
 					break;
 				notify_pane("pane-title-changed", wp);
 				server_redraw_window_borders(w);
@@ -2867,8 +2870,11 @@ input_exit_osc(struct input_ctx *ictx)
 	    ictx->input_end == INPUT_END_ST ? "ST" : "BEL");
 
 	option = 0;
-	while (*p >= '0' && *p <= '9')
+	while (*p >= '0' && *p <= '9') {
+		if (option > UINT_MAX / 10)
+			return;
 		option = option * 10 + *p++ - '0';
+	}
 	if (*p != ';' && *p != '\0')
 		return;
 	if (*p == ';')
@@ -2893,7 +2899,7 @@ input_exit_osc(struct input_ctx *ictx)
 	case 7:
 		if (utf8_isvalid(p)) {
 			screen_set_path(sctx->s, p);
-			if (wp != NULL) {
+			if (wp != NULL && wp->window != NULL) {
 				server_redraw_window_borders(wp->window);
 				server_status_window(wp->window);
 			}
@@ -3092,6 +3098,9 @@ input_osc_4(struct input_ctx *ictx, const char *p)
 	long			 idx;
 	int			 c, bad = 0, redraw = 0;
 	struct colour_palette	*palette = ictx->palette;
+
+	if (palette == NULL)
+		return;
 
 	copy = s = xstrdup(p);
 	while (s != NULL && *s != '\0') {
@@ -3437,6 +3446,9 @@ input_osc_104(struct input_ctx *ictx, const char *p)
 	long	 idx;
 	int	 bad = 0, redraw = 0;
 
+	if (ictx->palette == NULL)
+		return;
+
 	if (*p == '\0') {
 		colour_palette_clear(ictx->palette);
 		screen_write_fullredraw(&ictx->ctx);
@@ -3512,7 +3524,8 @@ input_request_timer_callback(__unused int fd, __unused short events, void *arg)
 	uint64_t		 t = get_timer();
 
 	TAILQ_FOREACH_SAFE(ir, &ictx->requests, entry, ir1) {
-		if (ir->t >= t - INPUT_REQUEST_TIMEOUT)
+		if (t < INPUT_REQUEST_TIMEOUT ||
+		    ir->t >= t - INPUT_REQUEST_TIMEOUT)
 			continue;
 		if (ir->type == INPUT_REQUEST_QUEUE)
 			input_send_reply(ir->ictx, ir->data);
