@@ -914,7 +914,7 @@ screen_redraw_draw_borders(struct screen_redraw_ctx *ctx)
 	TAILQ_FOREACH(wp, &w->panes, entry)
 		wp->border_gc_set = 0;
 
-	for (j = 0; j < c->tty.sy - ctx->statuslines; j++) {
+	for (j = 0; j < c->tty.sy && j + ctx->statuslines < c->tty.sy; j++) {
 		for (i = 0; i < c->tty.sx; i++)
 			screen_redraw_draw_borders_cell(ctx, i, j);
 	}
@@ -1067,6 +1067,8 @@ screen_redraw_draw_pane_scrollbar(struct screen_redraw_ctx *ctx,
 			return;
 		/* Show slider at the bottom of the scrollbar. */
 		total_height = screen_size_y(s) + screen_hsize(s);
+		if (total_height == 0)
+			return;
 		percent_view = (double)sb_h / total_height;
 		slider_h = (double)sb_h * percent_view;
 		slider_y = sb_h - slider_h;

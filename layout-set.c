@@ -207,6 +207,8 @@ layout_set_main_h(struct window *w)
 	n--;	/* take off main pane */
 
 	/* Find available height - take off one line for the border. */
+	if (w->sy <= 1)
+		return;
 	sy = w->sy - 1;
 
 	/* Get the main pane height. */
@@ -305,6 +307,8 @@ layout_set_main_h_mirrored(struct window *w)
 	n--;	/* take off main pane */
 
 	/* Find available height - take off one line for the border. */
+	if (w->sy <= 1)
+		return;
 	sy = w->sy - 1;
 
 	/* Get the main pane height. */
@@ -403,6 +407,8 @@ layout_set_main_v(struct window *w)
 	n--;	/* take off main pane */
 
 	/* Find available width - take off one line for the border. */
+	if (w->sx <= 1)
+		return;
 	sx = w->sx - 1;
 
 	/* Get the main pane width. */
@@ -501,6 +507,8 @@ layout_set_main_v_mirrored(struct window *w)
 	n--;	/* take off main pane */
 
 	/* Find available width - take off one line for the border. */
+	if (w->sx <= 1)
+		return;
 	sx = w->sx - 1;
 
 	/* Get the main pane width. */
@@ -610,10 +618,16 @@ layout_set_tiled(struct window *w)
 	}
 
 	/* What width and height should they be? */
-	width = (w->sx - (columns - 1)) / columns;
+	if (w->sx > columns - 1)
+		width = (w->sx - (columns - 1)) / columns;
+	else
+		width = PANE_MINIMUM;
 	if (width < PANE_MINIMUM)
 		width = PANE_MINIMUM;
-	height = (w->sy - (rows - 1)) / rows;
+	if (w->sy > rows - 1)
+		height = (w->sy - (rows - 1)) / rows;
+	else
+		height = PANE_MINIMUM;
 	if (height < PANE_MINIMUM)
 		height = PANE_MINIMUM;
 

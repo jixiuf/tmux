@@ -360,7 +360,7 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
     uint64_t *tag, const char *filter)
 {
 	struct window_tree_modedata	*data = modedata;
-	struct session			*s, **l;
+	struct session			**l;
 	struct session_group		*sg, *current;
 	u_int				 n, i;
 
@@ -375,12 +375,11 @@ window_tree_build(void *modedata, struct sort_criteria *sort_crit,
 	l = sort_get_sessions(&n, sort_crit);
 	if (n == 0)
 		return;
-	s = l[n - 1];
 	for (i = 0; i < n; i++) {
 		if (data->squash_groups &&
-		    (sg = session_group_contains(s)) != NULL) {
-			if ((sg == current && s != data->fs.s) ||
-			    (sg != current && s != TAILQ_FIRST(&sg->sessions)))
+		    (sg = session_group_contains(l[i])) != NULL) {
+			if ((sg == current && l[i] != data->fs.s) ||
+			    (sg != current && l[i] != TAILQ_FIRST(&sg->sessions)))
 				continue;
 		}
 		window_tree_build_session(l[i], modedata, sort_crit, filter);
@@ -441,6 +440,8 @@ window_tree_draw_session(struct window_tree_modedata *data, struct session *s,
 	char			*label;
 
 	total = winlink_count(&s->windows);
+	if (total == 0)
+		return;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	colour = options_get_number(oo, "display-panes-colour");
@@ -578,6 +579,8 @@ window_tree_draw_window(struct window_tree_modedata *data, struct session *s,
 	char			*label;
 
 	total = window_count_panes(w);
+	if (total == 0)
+		return;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	colour = options_get_number(oo, "display-panes-colour");
@@ -1160,7 +1163,7 @@ window_tree_mouse(struct window_tree_modedata *data, key_code key, u_int x,
 		x -= data->left;
 	else if (x != 0)
 		x--;
-	if (x == 0 || data->end == 0)
+	if (x == 0 || data->end == 0 || data->each == 0)
 		x = 0;
 	else {
 		x = x / data->each;

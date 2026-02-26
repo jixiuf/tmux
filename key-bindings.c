@@ -140,7 +140,7 @@ key_bindings_unref_table(struct key_table *table)
 	struct key_binding	*bd;
 	struct key_binding	*bd1;
 
-	if (--table->references != 0)
+	if (table->references == 0 || --table->references != 0)
 		return;
 
 	RB_FOREACH_SAFE(bd, key_bindings, &table->key_bindings, bd1) {

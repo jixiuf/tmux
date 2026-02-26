@@ -398,6 +398,7 @@ window_customize_build_options(struct window_customize_modedata *data,
 		window_customize_find_user_options(oo2, &list, &size);
 
 	for (i = 0; i < size; i++) {
+		o = NULL;
 		if (oo2 != NULL)
 			o = options_get(oo2, list[i]);
 		if (o == NULL && oo1 != NULL)
@@ -422,6 +423,7 @@ window_customize_build_options(struct window_customize_modedata *data,
 			loop = options_next(loop);
 			continue;
 		}
+		o = NULL;
 		if (oo2 != NULL)
 			o = options_get(oo2, name);
 		else if (oo1 != NULL)
@@ -472,6 +474,7 @@ window_customize_build_keys(struct window_customize_modedata *data,
 			expanded = format_expand(ft, filter);
 			if (!format_true(expanded)) {
 				free(expanded);
+				bd = key_bindings_next(kt, bd);
 				continue;
 			}
 			free(expanded);
@@ -750,7 +753,8 @@ window_customize_draw_option(struct window_customize_modedata *data,
 			strlcat(choices, *choice, sizeof choices);
 			strlcat(choices, ", ", sizeof choices);
 		}
-		choices[strlen(choices) - 2] = '\0';
+		if (strlen(choices) >= 2)
+			choices[strlen(choices) - 2] = '\0';
 		if (!screen_write_text(ctx, cx, sx, sy - (s->cy - cy), 0,
 		    &grid_default_cell, "Available values are: %s",
 		    choices))
@@ -886,7 +890,7 @@ window_customize_init(struct window_mode_entry *wme, struct cmd_find_state *fs,
 		data->format = xstrdup(WINDOW_CUSTOMIZE_DEFAULT_FORMAT);
 	else
 		data->format = xstrdup(args_get(args, 'F'));
-	if (args_has(args, 'y'))
+	if (args != NULL && args_has(args, 'y'))
 		data->prompt_flags = PROMPT_ACCEPT;
 
 	data->data = mode_tree_start(wp, args, window_customize_build,
@@ -960,17 +964,24 @@ window_customize_set_option_callback(struct client *c, void *itemdata,
     const char *s, __unused int done)
 {
 	struct window_customize_itemdata	*item = itemdata;
-	struct window_customize_modedata	*data = item->data;
+	struct window_customize_modedata	*data;
 	struct options_entry			*o;
 	const struct options_table_entry	*oe;
-	struct options				*oo = item->oo;
-	const char				*name = item->name;
+	struct options				*oo;
+	const char				*name;
 	char					*cause;
-	int					 idx = item->idx;
+	int					 idx;
+
+	if (item == NULL)
+		return (0);
+	data = item->data;
+	oo = item->oo;
+	name = item->name;
+	idx = item->idx;
 
 	if (s == NULL || *s == '\0' || data->dead)
 		return (0);
-	if (item == NULL || !window_customize_check_item(data, item, NULL))
+	if (!window_customize_check_item(data, item, NULL))
 		return (0);
 	o = options_get(oo, name);
 	if (o == NULL)
@@ -1014,15 +1025,17 @@ window_customize_set_option(struct client *c,
 	const struct options_table_entry	*oe;
 	struct options				*oo;
 	struct window_customize_itemdata	*new_item;
-	int					 flag, idx = item->idx;
+	int					 flag, idx;
 	enum window_customize_scope		 scope = WINDOW_CUSTOMIZE_NONE;
 	u_int					 choice;
-	const char				*name = item->name, *space = "";
+	const char				*name, *space = "";
 	char					*prompt, *value, *text;
 	struct cmd_find_state			 fs;
 
 	if (item == NULL || !window_customize_check_item(data, item, &fs))
 		return;
+	idx = item->idx;
+	name = item->name;
 	o = options_get(item->oo, name);
 	if (o == NULL)
 		return;
