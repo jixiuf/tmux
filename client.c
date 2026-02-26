@@ -621,6 +621,7 @@ client_dispatch_exit_message(char *data, size_t datalen)
 		datalen -= sizeof retval;
 		data += sizeof retval;
 
+		free(client_exitmessage);
 		client_exitmessage = xmalloc(datalen);
 		memcpy(client_exitmessage, data, datalen);
 		client_exitmessage[datalen - 1] = '\0';
@@ -752,6 +753,7 @@ client_dispatch_attached(struct imsg *imsg)
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_DETACH string");
 
+		free((void *)client_exitsession);
 		client_exitsession = xstrdup(data);
 		client_exittype = imsg->hdr.type;
 		if (imsg->hdr.type == MSG_DETACHKILL)
@@ -764,6 +766,8 @@ client_dispatch_attached(struct imsg *imsg)
 		if (datalen == 0 || data[datalen - 1] != '\0' ||
 		    strlen(data) + 1 == (size_t)datalen)
 			fatalx("bad MSG_EXEC string");
+		free((void *)client_execcmd);
+		free((void *)client_execshell);
 		client_execcmd = xstrdup(data);
 		client_execshell = xstrdup(data + strlen(data) + 1);
 
