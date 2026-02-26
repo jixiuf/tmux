@@ -132,12 +132,14 @@ spawn_window(struct spawn_context *sc, char **cause)
 			 * Can't use session_detach as it will destroy session
 			 * if this makes it empty.
 			 */
+			int was_curw = (s->curw == wl);
+
 			wl->flags &= ~WINLINK_ALERTFLAGS;
 			notify_session_window("window-unlinked", s, wl->window);
 			winlink_stack_remove(&s->lastw, wl);
 			winlink_remove(&s->windows, wl);
 
-			if (s->curw == wl) {
+			if (was_curw) {
 				s->curw = NULL;
 				sc->flags &= ~SPAWN_DETACHED;
 			}
@@ -171,8 +173,11 @@ spawn_window(struct spawn_context *sc, char **cause)
 	/* Spawn the pane. */
 	wp = spawn_pane(sc, cause);
 	if (wp == NULL) {
-		if (~sc->flags & SPAWN_RESPAWN)
+		if (~sc->flags & SPAWN_RESPAWN) {
+			if (s->curw == sc->wl)
+				s->curw = NULL;
 			winlink_remove(&s->windows, sc->wl);
+		}
 		return (NULL);
 	}
 
@@ -390,6 +395,10 @@ spawn_pane(struct spawn_context *sc, char **cause)
 		}
 		sigprocmask(SIG_SETMASK, &oldset, NULL);
 		environ_free(child);
+		if (actual_cwd != NULL &&
+		    chdir(path) != 0 &&
+		    (home == NULL || chdir(home) != 0))
+			chdir("/");
 		return (NULL);
 	}
 

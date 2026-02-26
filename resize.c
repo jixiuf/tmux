@@ -55,7 +55,7 @@ resize_window(struct window *w, u_int sx, u_int sy, int xpixel, int ypixel)
 	    sx, sy, w->layout_root->sx, w->layout_root->sy);
 
 	/* Restore the window zoom state. */
-	if (zoomed)
+	if (zoomed && w->active != NULL)
 		window_zoom(w->active);
 
 	tty_update_window_offset(w);
@@ -292,7 +292,10 @@ default_window_size(struct client *c, struct session *s, struct window *w,
 	 */
 	if (type == WINDOW_SIZE_LATEST && c != NULL && !ignore_client_size(c)) {
 		*sx = c->tty.sx;
-		*sy = c->tty.sy - status_line_size(c);
+		if (status_line_size(c) > c->tty.sy)
+			*sy = 0;
+		else
+			*sy = c->tty.sy - status_line_size(c);
 		*xpixel = c->tty.xpixel;
 		*ypixel = c->tty.ypixel;
 		log_debug("%s: using %ux%u from %s", __func__, *sx, *sy,
