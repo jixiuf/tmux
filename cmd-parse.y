@@ -806,6 +806,7 @@ cmd_parse_expand_alias(struct cmd_parse_command *cmd,
 
 	pi->flags |= CMD_PARSE_NOALIAS;
 	cmd_parse_build_commands(cmds, pi, pr);
+	cmd_parse_free_commands(cmds);
 	pi->flags &= ~CMD_PARSE_NOALIAS;
 	return (1);
 }
