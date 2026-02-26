@@ -1545,6 +1545,7 @@ struct session {
 	struct options	*options;
 
 #define SESSION_ALERTED 0x1
+#define SESSION_DESTROYED 0x2
 	int		 flags;
 
 	u_int		 attached;

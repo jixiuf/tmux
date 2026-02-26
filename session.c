@@ -135,16 +135,19 @@ session_create(const char *prefix, const char *name, const char *cwd,
 
 	if (name != NULL) {
 		s->name = xstrdup(name);
-		s->id = next_session_id++;
+		do {
+			s->id = next_session_id++;
+		} while (session_find_by_id(s->id) != NULL);
 	} else {
 		do {
 			s->id = next_session_id++;
-			free(s->name);
+			free(s->name); /* xcalloc guarantees NULL on first iteration */
 			if (prefix != NULL)
 				xasprintf(&s->name, "%s-%u", prefix, s->id);
 			else
 				xasprintf(&s->name, "%u", s->id);
-		} while (RB_FIND(sessions, &sessions, s) != NULL);
+		} while (RB_FIND(sessions, &sessions, s) != NULL ||
+		    session_find_by_id(s->id) != NULL);
 	}
 	RB_INSERT(sessions, &sessions, s);
 
@@ -188,6 +191,8 @@ session_free(__unused int fd, __unused short events, void *arg)
 		environ_free(s->environ);
 		options_free(s->options);
 
+		free((void *)s->cwd);
+		free(s->tio);
 		free(s->name);
 		free(s);
 	}
@@ -201,8 +206,10 @@ session_destroy(struct session *s, int notify, const char *from)
 
 	log_debug("session %s destroyed (%s)", s->name, from);
 
-	if (s->curw == NULL)
+	if (s->flags & SESSION_DESTROYED)
 		return;
+	s->flags |= SESSION_DESTROYED;
+
 	s->curw = NULL;
 
 	RB_REMOVE(sessions, &sessions, s);
@@ -210,6 +217,7 @@ session_destroy(struct session *s, int notify, const char *from)
 		notify_session("session-closed", s);
 
 	free(s->tio);
+	s->tio = NULL;
 
 	if (event_initialized(&s->lock_timer))
 		event_del(&s->lock_timer);
@@ -225,6 +233,7 @@ session_destroy(struct session *s, int notify, const char *from)
 	}
 
 	free((void *)s->cwd);
+	s->cwd = NULL;
 
 	session_remove_ref(s, __func__);
 }
@@ -359,10 +368,12 @@ session_attach(struct session *s, struct window *w, int idx, char **cause)
 int
 session_detach(struct session *s, struct winlink *wl)
 {
-	if (s->curw == wl &&
-	    session_last(s) != 0 &&
-	    session_previous(s, 0) != 0)
-		session_next(s, 0);
+	if (s->curw == wl) {
+		if (session_last(s) != 0 &&
+		    session_previous(s, 0) != 0 &&
+		    session_next(s, 0) != 0)
+			s->curw = NULL;
+	}
 
 	wl->flags &= ~WINLINK_ALERTFLAGS;
 	notify_session_window("window-unlinked", s, wl->window);
@@ -655,6 +666,7 @@ session_group_synchronize1(struct session *target, struct session *s)
 	struct winlinks		 old_windows, *ww;
 	struct winlink_stack	 old_lastw;
 	struct winlink		*wl, *wl2;
+	int			 curw_idx;
 
 	/* Don't do anything if the session is empty (it'll be destroyed). */
 	ww = &target->windows;
@@ -666,6 +678,9 @@ session_group_synchronize1(struct session *target, struct session *s)
 	    winlink_find_by_index(ww, s->curw->idx) == NULL &&
 	    session_last(s) != 0 && session_previous(s, 0) != 0)
 		session_next(s, 0);
+
+	/* Save the current window index before swapping the window list. */
+	curw_idx = (s->curw != NULL) ? s->curw->idx : -1;
 
 	/* Save the old pointer and reset it. */
 	memcpy(&old_windows, &s->windows, sizeof old_windows);
@@ -681,10 +696,13 @@ session_group_synchronize1(struct session *target, struct session *s)
 	}
 
 	/* Fix up the current window. */
-	if (s->curw != NULL)
-		s->curw = winlink_find_by_index(&s->windows, s->curw->idx);
-	else if (target->curw != NULL)
+	s->curw = NULL;
+	if (curw_idx >= 0)
+		s->curw = winlink_find_by_index(&s->windows, curw_idx);
+	if (s->curw == NULL && target->curw != NULL)
 		s->curw = winlink_find_by_index(&s->windows, target->curw->idx);
+	if (s->curw == NULL)
+		s->curw = RB_MIN(winlinks, &s->windows);
 
 	/* Fix up the last window stack. */
 	memcpy(&old_lastw, &s->lastw, sizeof old_lastw);
@@ -700,8 +718,12 @@ session_group_synchronize1(struct session *target, struct session *s)
 	/* Then free the old winlinks list. */
 	while (!RB_EMPTY(&old_windows)) {
 		wl = RB_ROOT(&old_windows);
-		wl2 = winlink_find_by_window_id(&s->windows, wl->window->id);
-		if (wl2 == NULL)
+		if (wl->window != NULL)
+			wl2 = winlink_find_by_window_id(&s->windows,
+			    wl->window->id);
+		else
+			wl2 = NULL;
+		if (wl2 == NULL && wl->window != NULL)
 			notify_session_window("window-unlinked", s, wl->window);
 		winlink_remove(&old_windows, wl);
 	}
