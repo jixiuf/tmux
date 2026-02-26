@@ -508,6 +508,7 @@ mode_tree_start(struct window_pane *wp, struct args *args,
 	mtd->sortcb = sortcb;
 
 	TAILQ_INIT(&mtd->children);
+	TAILQ_INIT(&mtd->saved);
 
 	*s = &mtd->screen;
 	screen_init(*s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
@@ -557,7 +558,8 @@ mode_tree_set_height(struct mode_tree_data *mtd)
 		} else
 			mtd->height = screen_size_y(s);
 	}
-	if (screen_size_y(s) - mtd->height < 2)
+	if (mtd->height > screen_size_y(s) ||
+	    screen_size_y(s) - mtd->height < 2)
 		mtd->height = screen_size_y(s);
 }
 
@@ -791,7 +793,7 @@ mode_tree_draw(struct mode_tree_data *mtd)
 		if (line->depth == 0)
 			start = xstrdup(symbol);
 		else {
-			size = (4 * line->depth) + 32;
+			size = (6 * line->depth) + 32;
 
 			start = xcalloc(1, size);
 			for (j = 1; j < line->depth; j++) {
