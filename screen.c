@@ -310,8 +310,9 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
     int eat_empty, int cursor)
 {
 	u_int	cx = s->cx, cy = s->grid->hsize + s->cy;
+	int	had_write_list = (s->write_list != NULL);
 
-	if (s->write_list != NULL)
+	if (had_write_list)
 		screen_write_free_list(s);
 
 	log_debug("%s: new size %ux%u, now %ux%u (cursor %u,%u = %u,%u)",
@@ -350,7 +351,7 @@ screen_resize_cursor(struct screen *s, u_int sx, u_int sy, int reflow,
 	log_debug("%s: cursor finished at %u,%u = %u,%u", __func__, s->cx,
 	    s->cy, cx, cy);
 
-	if (s->write_list != NULL)
+	if (had_write_list)
 		screen_write_make_list(s);
 }
 

@@ -4033,6 +4033,7 @@ format_unescape(const char *s)
 			brackets++;
 		if (brackets == 0 &&
 		    *s == '#' &&
+		    s[1] != '\0' &&
 		    strchr(",#{}:", s[1]) != NULL) {
 			*cp++ = *++s;
 			continue;
@@ -4056,7 +4057,8 @@ format_strip(const char *s)
 	for (; *s != '\0'; s++) {
 		if (*s == '#' && s[1] == '{')
 			brackets++;
-		if (*s == '#' && strchr(",#{}:", s[1]) != NULL) {
+		if (*s == '#' && s[1] != '\0' &&
+		    strchr(",#{}:", s[1]) != NULL) {
 			if (brackets != 0)
 				*cp++ = *s;
 			continue;
@@ -4465,7 +4467,7 @@ format_loop_sessions(struct format_expand_state *es, const char *fmt)
 		strlcat(value, expanded, valuelen);
 		free(expanded);
 	}
-	free(l);
+/* l is static, do not free */
 
 	free(active);
 	free(all);
@@ -4551,7 +4553,7 @@ format_loop_windows(struct format_expand_state *es, const char *fmt)
 		strlcat(value, expanded, valuelen);
 		free(expanded);
 	}
-	free(l);
+/* l is static, do not free */
 
 	free(active);
 	free(all);
@@ -4611,7 +4613,7 @@ format_loop_panes(struct format_expand_state *es, const char *fmt)
 		strlcat(value, expanded, valuelen);
 		free(expanded);
 	}
-	free(l);
+/* l is static, do not free */
 
 	free(active);
 	free(all);
@@ -4655,7 +4657,7 @@ format_loop_clients(struct format_expand_state *es, const char *fmt)
 		strlcat(value, expanded, valuelen);
 		free(expanded);
 	}
-	free(l);
+/* l is static, do not free */
 
 	return (value);
 }
@@ -5433,7 +5435,8 @@ format_expand1(struct format_expand_state *es, const char *fmt)
 			buf[off++] = *fmt++;
 			continue;
 		}
-		if (*fmt++ == '\0')
+		fmt++;
+		if (*fmt == '\0')
 			break;
 
 		ch = (u_char)*fmt++;

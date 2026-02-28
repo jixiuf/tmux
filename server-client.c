@@ -3205,7 +3205,9 @@ server_client_check_exit(struct client *c)
 		break;
 	}
 	free(c->exit_session);
+	c->exit_session = NULL;
 	free(c->exit_message);
+	c->exit_message = NULL;
 }
 
 /* Redraw timer callback. */
@@ -3711,6 +3713,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	case MSG_IDENTIFY_TERM:
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			return (-1);
+		free(c->term_name);
 		c->term_name = xstrdup(data);
 		log_debug("client %p IDENTIFY_TERM %s", c, data);
 		break;
@@ -3725,12 +3728,14 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	case MSG_IDENTIFY_TTYNAME:
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			return (-1);
+		free(c->ttyname);
 		c->ttyname = xstrdup(data);
 		log_debug("client %p IDENTIFY_TTYNAME %s", c, data);
 		break;
 	case MSG_IDENTIFY_CWD:
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			return (-1);
+		free((void *)c->cwd);
 		if (access(data, X_OK) == 0)
 			c->cwd = xstrdup(data);
 		else if ((home = find_home()) != NULL)

@@ -251,6 +251,7 @@ screen_write_free_list(struct screen *s)
 		TAILQ_CONCAT(&screen_write_citem_freelist,
 		    &s->write_list[y].items, entry);
 		free(s->write_list[y].data);
+		s->write_list[y].data = NULL;
 	}
 	free(s->write_list);
 	s->write_list = NULL;
