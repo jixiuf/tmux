@@ -212,7 +212,7 @@ options_first(struct options *oo)
 struct options_entry *
 options_next(struct options_entry *o)
 {
-	return (RB_NEXT(options_tree, &oo->tree, o));
+	return (RB_NEXT(options_tree, &o->owner->tree, o));
 }
 
 struct options_entry *
@@ -270,7 +270,8 @@ options_default(struct options *oo, const struct options_table_entry *oe)
 
 	if (oe->flags & OPTIONS_TABLE_IS_ARRAY) {
 		if (oe->default_arr == NULL) {
-			options_array_assign(o, oe->default_str, NULL);
+			if (oe->default_str != NULL)
+				options_array_assign(o, oe->default_str, NULL);
 			return (o);
 		}
 		for (i = 0; oe->default_arr[i] != NULL; i++)
@@ -563,7 +564,7 @@ options_array_first(struct options_entry *o)
 struct options_array_item *
 options_array_next(struct options_array_item *a)
 {
-	return (RB_NEXT(options_array, &o->value.array, a));
+	return (RB_NEXT(options_array, NULL, a));
 }
 
 u_int
