@@ -1713,6 +1713,7 @@ window_pane_input_callback(struct client *c, __unused const char *path,
 			c->flags |= CLIENT_EXIT;
 		}
 		file_cancel(cdata->file);
+		cdata->file = NULL;
 	} else if (cdata->file == NULL || closed || error != 0) {
 		cmdq_continue(cdata->item);
 		server_client_unref(c);

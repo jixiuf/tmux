@@ -572,6 +572,8 @@ tty_keys_free(struct tty *tty)
 static void
 tty_keys_free1(struct tty_key *tk)
 {
+	if (tk == NULL)
+		return;
 	if (tk->next != NULL)
 		tty_keys_free1(tk->next);
 	if (tk->left != NULL)
@@ -1625,6 +1627,8 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 				break;
 			if (ch < '0' || ch > '9')
 				return (-1);
+			if (sgr_b > UINT_MAX / 10)
+				return (-1);
 			sgr_b = 10 * sgr_b + (ch - '0');
 		}
 		while (1) {
@@ -1635,6 +1639,8 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 				break;
 			if (ch < '0' || ch > '9')
 				return (-1);
+			if (x > UINT_MAX / 10)
+				return (-1);
 			x = 10 * x + (ch - '0');
 		}
 		while (1) {
@@ -1644,6 +1650,8 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size,
 			if (ch == 'M' || ch == 'm')
 				break;
 			if (ch < '0' || ch > '9')
+				return (-1);
+			if (y > UINT_MAX / 10)
 				return (-1);
 			y = 10 * y + (ch - '0');
 		}
