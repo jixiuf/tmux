@@ -610,6 +610,48 @@ control_flush_all_blocks(struct client *c)
 	}
 }
 
+/*
+ * Check if position i in buf (of length len) is the start of a kitty keyboard
+ * protocol CSI sequence.  These are: CSI > N u (push), CSI < N u (pop),
+ * CSI = N ; M u (set), CSI ? N u (query).  Returns the length of the
+ * sequence if matched, 0 otherwise.
+ */
+static size_t
+control_kitty_csi_len(const u_char *buf, size_t len, size_t i)
+{
+	size_t	j;
+
+	/* Need at least ESC [ X u = 4 bytes. */
+	if (i + 3 >= len)
+		return (0);
+	if (buf[i] != 0x1b || buf[i + 1] != '[')
+		return (0);
+
+	/* Third byte must be a kitty keyboard intermediate: < = > ? */
+	switch (buf[i + 2]) {
+	case '<':
+	case '=':
+	case '>':
+	case '?':
+		break;
+	default:
+		return (0);
+	}
+
+	/* Scan digits and semicolons until we find the final byte. */
+	for (j = i + 3; j < len; j++) {
+		if (buf[j] == 'u')
+			return (j - i + 1);
+		if (buf[j] >= '0' && buf[j] <= '9')
+			continue;
+		if (buf[j] == ';')
+			continue;
+		/* Not a valid kitty sequence character. */
+		return (0);
+	}
+	return (0);
+}
+
 /* Append data to buffer. */
 static struct evbuffer *
 control_append_data(struct client *c, struct control_pane *cp, uint64_t age,
@@ -635,6 +677,20 @@ control_append_data(struct client *c, struct control_pane *cp, uint64_t age,
 	if (new_size < size)
 		fatalx("not enough data: %zu < %zu", new_size, size);
 	for (i = 0; i < size; i++) {
+		/*
+		 * Strip kitty keyboard protocol sequences from control mode
+		 * output.  These are internal terminal state management
+		 * sequences (push/pop/set/query) that should not leak to the
+		 * control mode wrapper (e.g., iTerm2), as they can cause the
+		 * wrapper to change its own keyboard encoding.
+		 */
+		if (new_data[i] == 0x1b) {
+			size_t	skip = control_kitty_csi_len(new_data, size, i);
+			if (skip > 0) {
+				i += skip - 1;
+				continue;
+			}
+		}
 		if (new_data[i] < ' ' || new_data[i] == '\\') {
 			evbuffer_add_printf(message, "\\%03o", new_data[i]);
 		} else {
