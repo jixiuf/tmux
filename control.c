@@ -1143,7 +1143,7 @@ control_add_sub(struct client *c, const char *name, enum control_sub_type type,
 	if ((csub = RB_FIND(control_subs, &cs->subs, &find)) != NULL)
 		control_free_sub(cs, csub);
 
-	if (id < 0)
+	if ((type == CONTROL_SUB_PANE || type == CONTROL_SUB_WINDOW) && id < 0)
 		return;
 
 	csub = xcalloc(1, sizeof *csub);
