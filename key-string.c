@@ -252,6 +252,9 @@ key_string_get_modifiers(const char **string)
     } else if (strncasecmp(*string, "Super-",6) ==0) {
       modifiers |= KEYC_SUPER;
       *string +=6;
+    } else if (strncasecmp(*string, "s-",2) ==0) {
+      modifiers |= KEYC_SUPER;
+      *string +=6;
     } else if (strncasecmp(*string, "Hyper-",6) ==0) {
       modifiers |= KEYC_HYPER;
       *string +=6;
@@ -380,7 +383,7 @@ key_string_lookup_key(key_code key, int with_flags)
 	if (key & KEYC_CTRL)
 		strlcat(out, "C-", sizeof out);
 	if (key & KEYC_SUPER)
-		strlcat(out, "Super-", sizeof out);
+		strlcat(out, "s-", sizeof out);
 	if (key & KEYC_HYPER)
 		strlcat(out, "H-", sizeof out);
 	if (key & KEYC_META)
