@@ -826,7 +826,19 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	/* Mouse keys need a pane. */
 	if (KEYC_IS_MOUSE(key))
 		return (0);
-    kitty_flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
+
+	/*
+	 * Literal keys go as themselves: send-keys -H hands us the bytes of a
+	 * sequence the caller encoded, so they must not be re-encoded as a
+	 * Kitty key event (which would split "\033[A" into Escape, "[", "A").
+	 */
+	if (key & KEYC_LITERAL) {
+		ud.data[0] = (u_char)key;
+		input_key_write(__func__, bev, &ud.data[0], 1);
+		return (0);
+	}
+
+	kitty_flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
 	if (kitty_flags){
 		if(input_key_kitty(s,bev,key) == 0)
 			return (0);
@@ -844,13 +856,6 @@ input_key(struct screen *s, struct bufferevent *bev, key_code key)
 	/* Mouse keys need a pane. */
 	if (KEYC_IS_MOUSE(key))
 		return (0);
-
-	/* Literal keys go as themselves (can't be more than eight bits). */
-	if (key & KEYC_LITERAL) {
-		ud.data[0] = (u_char)key;
-		input_key_write(__func__, bev, &ud.data[0], 1);
-		return (0);
-	}
 
 	/* Is this backspace? */
 	if ((key & KEYC_MASK_KEY) == KEYC_BSPACE) {
