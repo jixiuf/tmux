@@ -695,6 +695,14 @@ screen_alternate_on(struct screen *s, struct grid_cell *gc, int cursor)
 	}
 	memcpy(&s->saved_cell, gc, sizeof s->saved_cell);
 	memcpy(&s->saved_kitty_kbd,&s->kitty_kbd , sizeof s->kitty_kbd);
+	/*
+	 * The main and alternate screens have independent keyboard mode
+	 * stacks: the program entering the alternate screen must not inherit
+	 * the flags of the program that was running on the main screen, and
+	 * it must not need to know them.  The main screen's stack was saved
+	 * above and is restored when the alternate screen is left.
+	 */
+	memset(&s->kitty_kbd, 0, sizeof s->kitty_kbd);
 
 	grid_free_lines(s->grid, screen_hsize(s), sy);
 	grid_view_clear(s->grid, 0, 0, sx, sy, 8);
