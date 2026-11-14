@@ -481,6 +481,24 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 
     if (!disambiguate) return (-1);
 
+	/*
+	 * Enter, Tab and Backspace keep their legacy encoding when they are
+	 * unmodified, so that a program which dies without clearing the flags
+	 * still leaves a usable shell (the protocol exempts exactly these).  A
+	 * modified one cannot be expressed in legacy form at all, so it has to
+	 * reach the encoder below even though it is a named key.
+	 */
+	switch(key & ~(KEYC_META|KEYC_IMPLIED_META|
+				   KEYC_CAPS_LOCK|KEYC_MASK_FLAGS)){
+	case '\t':
+	case '\r':
+	case KEYC_BSPACE:
+		if ((key & (KEYC_SHIFT|KEYC_META|KEYC_CTRL|
+			    KEYC_SUPER|KEYC_HYPER)) == 0)
+			return (-1);
+		goto emit_escapes;
+	}
+
 	/* Ignore internal function key codes. */
 	if (KEYC_IS_USER(onlykey) || KEYC_IS_SPECIAL(onlykey) ||
 	    KEYC_IS_MOUSE(onlykey)) {
@@ -504,13 +522,6 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 	if(all_as_escapes)
         goto emit_escapes;
 
-	switch(key & ~(KEYC_META|KEYC_IMPLIED_META|
-				   KEYC_CAPS_LOCK|KEYC_MASK_FLAGS)){
-	case '\t':
-	case '\r':
-	case KEYC_BSPACE:
-		return -1;
-	}
 emit_escapes:
 	/* CSI 1; modifiers [ABCDEFHPQS] */
 	/* CSI [ABCDEFHPQS] */
