@@ -134,10 +134,14 @@ cmd_send_keys_inject_string(struct cmdq_item *item, struct cmdq_item *after,
 	if (!literal) {
 		key = key_string_lookup_string(s);
 		if (key != KEYC_NONE && key != KEYC_UNKNOWN) {
+			/*
+			 * A recognized key name that the pane cannot encode in
+			 * its current mode is dropped: typing the name itself
+			 * into the pane would be worse than sending nothing.
+			 */
 			after = cmd_send_keys_inject_key(item, after, args,
 			    key);
-			if (after != NULL)
-				return (after);
+			return (after == NULL ? item : after);
 		}
 		literal = 1;
 	}
