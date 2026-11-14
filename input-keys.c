@@ -740,6 +740,7 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 	struct utf8_data	 ud;
 	key_code		 onlykey;
 	const char		*p;
+	int			 meta;
 	static const char	*standard_map[2] = {
 		"1!9(0)=+;:'\",<.>/-8? 2",
 		"119900=+;;'',,..\x1f\x1f\x7f\x7f\0\0",
@@ -747,14 +748,21 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 
 	log_debug("%s: key in %llx", __func__, key);
 
-	if (key & KEYC_META)
-		input_key_write(__func__, bev, "\033", 1);
+	/*
+	 * Remember Meta rather than writing its ESC prefix straight away: a key
+	 * that turns out to be unencodable must not leave a stray ESC behind in
+	 * the pane's input, where it would be read as the start of an escape
+	 * sequence.
+	 */
+	meta = !!(key & KEYC_META);
 
 	/*
 	 * There's no way to report modifiers for unicode keys in standard mode
 	 * so lose the modifiers.
 	 */
 	if (KEYC_IS_UNICODE(key)) {
+		if (meta)
+			input_key_write(__func__, bev, "\033", 1);
 		utf8_to_data(key, &ud);
                 input_key_write(__func__, bev, ud.data, ud.size);
 		return (0);
@@ -791,6 +799,8 @@ input_key_vt10x(struct bufferevent *bev, key_code key)
 
 	log_debug("%s: key out %llx", __func__, key);
 
+	if (meta)
+		input_key_write(__func__, bev, "\033", 1);
 	ud.data[0] = key & 0x7f;
 	input_key_write(__func__, bev, &ud.data[0], 1);
 	return (0);
