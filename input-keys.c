@@ -439,8 +439,11 @@ get_modifier(key_code key)
 		modifier |= 0x20;
 	if (key & KEYC_CAPS_LOCK)
 		modifier |= 0x40;
-	if (key & KEYC_KEYPAD)
-		modifier |= 0x80;
+	/*
+	 * 0x80 is the num_lock bit, which reports the state of the lock, not
+	 * whether the key came from the keypad: keypad keys have their own key
+	 * codes, so KEYC_KEYPAD must not set it.
+	 */
 	modifier++;
 	return modifier;
 }
