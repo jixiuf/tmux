@@ -476,10 +476,15 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 	flags = s->kitty_kbd.flags[s->kitty_kbd.idx];
 	disambiguate = flags & KITTY_KBD_DISAMBIGUATE;
 	all_as_escapes = flags & KITTY_KBD_REPORT_ALL;
-	onlykey = (key & KEYC_MASK_KEY);
-	modifier = get_modifier(key);
 
     if (!disambiguate) return (-1);
+
+	/* A shifted tab arrives as its own code; report it as Tab plus Shift. */
+	if ((key & KEYC_MASK_KEY) == KEYC_BTAB)
+		key = C0_HT|(key & ~KEYC_MASK_KEY)|KEYC_SHIFT;
+
+	onlykey = (key & KEYC_MASK_KEY);
+	modifier = get_modifier(key);
 
 	/*
 	 * Enter, Tab and Backspace keep their legacy encoding when they are
@@ -500,10 +505,20 @@ input_key_kitty(struct screen *s, struct bufferevent *bev,key_code key)
 	}
 
 	/* Ignore internal function key codes. */
-	if (KEYC_IS_USER(onlykey) || KEYC_IS_SPECIAL(onlykey) ||
-	    KEYC_IS_MOUSE(onlykey)) {
+	if (KEYC_IS_USER(onlykey) || KEYC_IS_MOUSE(onlykey))
 		return (-1);
-	}
+
+	/*
+	 * A key that already has a legacy encoding keeps it: the protocol only
+	 * adds keys legacy cannot express, and re-encoding the rest would send
+	 * the number-less CSI form, where "CSI H" or "CSI P" collide with the
+	 * CSI control functions of the same name.  Keypad keys are the exception:
+	 * legacy sends them as the plain character, so the protocol's keypad
+	 * codes are the only way an application can tell them apart.
+	 */
+	if (KEYC_IS_SPECIAL(onlykey) && (~key & KEYC_KEYPAD) &&
+	    input_key_get(key) != NULL)
+		return (-1);
 
 	/*
 	 * If this is a normal 7-bit key, just send it,
@@ -646,6 +661,14 @@ emit_escapes:
     case KEYC_ISO_LEVEL3_SHIFT:	number = 57453; final='u';break;
     case KEYC_ISO_LEVEL5_SHIFT:	number = 57454; final='u';break;
 	default:
+		/*
+		 * Text keys with modifiers arrive here (their plain form is
+		 * handled above) and are reported by code point.  A named key
+		 * that has no code point of its own cannot be reported, so let
+		 * the legacy encoder deal with it.
+		 */
+		if ((key & KEYC_MASK_TYPE) != 0)
+			return (-1);
 		number=onlykey;
 		final='u';
 	}
